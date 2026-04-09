@@ -1,0 +1,11 @@
+.ssh/
+node_modules/
+.env
+.env.*
+dist/
+build/
+.next/
+coverage/
+logs/
+*.log
+.DS_Store
