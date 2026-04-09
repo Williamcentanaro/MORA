@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Menu" ADD COLUMN "date" DATETIME;
+ALTER TABLE "Menu" ADD COLUMN "price" REAL;

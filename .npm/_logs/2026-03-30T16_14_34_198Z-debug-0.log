@@ -1,0 +1,20 @@
+0 verbose cli /usr/bin/node /usr/bin/npm
+1 info using npm@10.8.2
+2 info using node@v20.20.0
+3 silly config load:file:/usr/lib/node_modules/npm/npmrc
+4 silly config load:file:/root/backend/.npmrc
+5 silly config load:file:/root/.npmrc
+6 silly config load:file:/usr/etc/npmrc
+7 verbose title npm ls prisma @prisma/client
+8 verbose argv "ls" "prisma" "@prisma/client"
+9 verbose logfile logs-max:10 dir:/root/.npm/_logs/2026-03-30T16_14_34_198Z-
+10 verbose logfile /root/.npm/_logs/2026-03-30T16_14_34_198Z-debug-0.log
+11 silly packumentCache heap:2197815296 maxSize:549453824 maxEntrySize:274726912
+12 silly logfile start cleaning logs, removing 1 files
+13 silly logfile done cleaning log files
+14 verbose cwd /root/backend
+15 verbose os Linux 6.8.0-100-generic
+16 verbose node v20.20.0
+17 verbose npm  v10.8.2
+18 verbose exit 0
+19 info ok
