@@ -12,6 +12,7 @@ interface Restaurant {
   distance?: number;
   openingHours?: any[];
   coverImage?: string | null;
+  logo?: string | null;
 }
 
 interface PopularRestaurantsProps {

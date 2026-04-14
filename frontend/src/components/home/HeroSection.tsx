@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Search, MapPin, Navigation, X } from "lucide-react";
 
@@ -29,6 +30,13 @@ export default function HeroSection({
   detectLocation
 }: HeroSectionProps) {
   const hasActiveFilters = searchQuery || selectedCity || openNowOnly || maxDistance !== "";
+  
+  // Defer heavy video loading to prevent blocking first paint
+  const [loadVideo, setLoadVideo] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setLoadVideo(true), 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const resetFilters = () => {
     setSearchQuery("");
@@ -47,26 +55,38 @@ export default function HeroSection({
       overflow: 'hidden',
       backgroundColor: '#000'
     }}>
-      {/* Video Background */}
-      <video
-        autoPlay
-        muted
-        loop
-        playsInline
-        poster="/images/hero-fallback.png"
-        style={{
+      {/* Optimized fallback poster visible immediately */}
+      <div style={{
           position: 'absolute',
-          top: '50%',
-          left: '50%',
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 1
-        }}
-      >
-        <source src="/videos/hero.mp4" type="video/mp4" />
-      </video>
+          top: 0, left: 0, width: '100%', height: '100%',
+          backgroundImage: 'url(/images/hero-fallback.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          zIndex: 0
+      }} />
+
+      {/* Video Background (Deferred) */}
+      {loadVideo && (
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 1
+          }}
+        >
+          <source src="/videos/hero.mp4" type="video/mp4" />
+        </video>
+      )}
 
       {/* Darker Cinematic Overlay with Gradient */}
       <div style={{

@@ -22,6 +22,10 @@ const router = express.Router();
 router.get("/followed", authenticate, getFollowedRestaurants);
 
 router.get("/", getRestaurants);
+
+// Reviews
+router.post("/:id/reviews", authenticate, createOrUpdateRestaurantReview);
+
 router.get("/:id", getRestaurantById);
 router.post("/", authenticate, validate(createRestaurantSchema), createRestaurant);
 
@@ -34,8 +38,5 @@ router.get("/:id/follow-status", authenticate, getFollowStatus);
 router.post("/:id/menu", authenticate, validate(createMenuSchema), createMenu);
 router.get("/:id/menu/today", getTodayMenu);
 router.get("/:id/menu", getRestaurantMenus);
-
-// Reviews
-router.post("/:id/reviews", authenticate, createOrUpdateRestaurantReview);
 
 export default router;

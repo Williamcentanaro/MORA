@@ -13,6 +13,10 @@ interface RestaurantCardProps {
     distance?: number;
     openingHours?: any[];
     coverImage?: string | null;
+    logo?: string | null;
+    reviewsCount?: number;
+    averageRating?: number;
+    cuisineType?: string | null;
   };
 }
 
@@ -39,7 +43,7 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
         {/* Card Image Wrapper */}
         <div style={{ position: 'relative', height: '220px', overflow: 'hidden' }}>
           <img 
-            src={restaurant.coverImage || `https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&h=400&fit=crop`} 
+            src={restaurant.coverImage || restaurant.logo || `https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&h=400&fit=crop`} 
             alt={restaurant.name}
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
@@ -81,15 +85,29 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
             <h3 style={{ fontSize: '1.25rem', fontWeight: 900, margin: 0, color: 'var(--text-main)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
               {restaurant.name}
             </h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent)', background: '#fffbeb', padding: '4px 8px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 800 }}>
-              <Star size={14} fill="var(--accent)" />
-              <span>4.8</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent)', background: '#fffbeb', padding: '4px 8px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 800 }}>
+                <Star size={14} fill={(restaurant.reviewsCount ?? 0) > 0 ? "var(--accent)" : "transparent"} />
+                <span>{restaurant.averageRating ? parseFloat(restaurant.averageRating.toString()).toFixed(1) : parseFloat("0").toFixed(1)}</span>
+              </div>
+              {(restaurant.reviewsCount ?? 0) > 0 && (
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>({restaurant.reviewsCount} recensioni)</span>
+              )}
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '16px', fontWeight: 500 }}>
-            <MapPin size={14} style={{ color: 'var(--primary)' }} />
-            <span>{restaurant.city}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '16px', fontWeight: 500 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <MapPin size={14} style={{ color: 'var(--primary)' }} />
+              <span>{restaurant.city}</span>
+            </div>
+            {restaurant.cuisineType && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f1f5f9', padding: '4px 8px', borderRadius: '8px' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', textTransform: 'capitalize' }}>
+                  {restaurant.cuisineType}
+                </span>
+              </div>
+            )}
           </div>
 
           <p style={{ 

@@ -21,7 +21,7 @@ export const getRestaurants = async (req: Request, res: Response, next: NextFunc
                 phone: true,
                 latitude: true,
                 longitude: true,
-                coverImage: true,
+                logo: true, // Only use lightweight logo for lists
                 status: true,
                 cuisineType: true,
                 openingHours: true,
@@ -49,6 +49,7 @@ export const getRestaurants = async (req: Request, res: Response, next: NextFunc
 
         res.json(formattedRestaurants);
     } catch (error) {
+        console.error("[GET /api/restaurants] Internal Server Error:", error);
         next(error);
     }
 };

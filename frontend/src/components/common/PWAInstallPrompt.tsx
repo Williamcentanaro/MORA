@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download, X, Share } from 'lucide-react';
+import { Download, Share } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function PWAInstallPrompt() {
@@ -61,94 +61,106 @@ export default function PWAInstallPrompt() {
 
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ y: 100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 100, opacity: 0 }}
-        style={{
-          position: 'fixed',
-          bottom: 24,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: 'calc(100% - 32px)',
-          maxWidth: 400,
-          backgroundColor: '#ffffff',
-          borderRadius: '24px',
-          padding: '20px',
-          boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
-          zIndex: 9999,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 16,
-          border: '1px solid #f1f5f9'
-        }}
-      >
-        <button 
-          onClick={dismissPrompt}
-          style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
-        >
-          <X size={20} />
-        </button>
-
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <div style={{ 
-            width: 56, 
-            height: 56, 
-            borderRadius: '16px', 
-            background: 'linear-gradient(135deg, #FF5A1F 0%, #ff7e4b 100%)',
+      <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', zIndex: 9998,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(4px)'
+      }}>
+        <motion.div
+          initial={{ y: 20, opacity: 0, scale: 0.95 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: 20, opacity: 0, scale: 0.95 }}
+          style={{
+            width: 'calc(100% - 32px)',
+            maxWidth: 380,
+            backgroundColor: '#ffffff',
+            borderRadius: '24px',
+            padding: '24px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            zIndex: 9999,
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0
-          }}>
-            <img src="/mora-logo.png" alt="MORA" style={{ width: '40px', height: '40px', borderRadius: '8px' }} />
-          </div>
-          <div>
-            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Scarica l'App MORA</h3>
-            <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>Installa sul tuo telefono per un'esperienza migliore</p>
-          </div>
-        </div>
-
-        {platform === 'ios' ? (
-          <div style={{ 
-            backgroundColor: '#f8fafc', 
-            padding: '12px', 
-            borderRadius: '16px', 
-            fontSize: '0.9rem',
-            textAlign: 'center',
-            color: '#1e293b'
-          }}>
-            <p style={{ margin: '0 0 8px 0' }}>Per installare su iPhone:</p>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 700 }}>
-              1. Premi <Share size={18} /> 
-              2. Scegli "Aggiungi a Home"
-            </div>
-          </div>
-        ) : (
-          <button 
-            onClick={handleInstallClick}
-            style={{
-              width: '100%',
-              backgroundColor: '#FF5A1F',
-              color: 'white',
-              border: 'none',
-              borderRadius: '16px',
-              padding: '14px',
-              fontSize: '1rem',
-              fontWeight: 700,
+            flexDirection: 'column',
+            gap: 20,
+            textAlign: 'center'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+            <div style={{ 
+              width: 72, 
+              height: 72, 
+              borderRadius: '20px', 
+              background: 'linear-gradient(135deg, #FF5A1F 0%, #ff7e4b 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 8,
-              cursor: 'pointer',
-              boxShadow: '0 10px 20px rgba(255, 90, 31, 0.2)'
+              boxShadow: '0 8px 16px rgba(255, 90, 31, 0.2)'
+            }}>
+              <img src="/mora-logo.png" alt="MORA" style={{ width: '48px', height: '48px', borderRadius: '10px' }} />
+            </div>
+          </div>
+          
+          <div>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '1.3rem', fontWeight: 900 }}>Aggiungi MORA al telefono</h3>
+            <p style={{ margin: 0, fontSize: '0.95rem', color: '#64748b', lineHeight: 1.5 }}>
+              Installa l'app per un'esperienza più veloce, notifiche in tempo reale e mappa sempre a portata di mano.
+            </p>
+          </div>
+
+          {platform === 'ios' ? (
+            <div style={{ 
+              backgroundColor: '#f8fafc', 
+              padding: '16px', 
+              borderRadius: '16px', 
+              fontSize: '0.9rem',
+              color: '#1e293b'
+            }}>
+              <p style={{ margin: '0 0 12px 0', fontWeight: 600 }}>Per installare su iPhone:</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 700, background: 'white', padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                1. Premi <Share size={18} color="var(--primary)" /> 
+                <span style={{color: '#cbd5e1'}}>|</span>
+                2. "Aggiungi a Home"
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <button 
+                onClick={handleInstallClick}
+                style={{
+                  width: '100%',
+                  backgroundColor: '#FF5A1F',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '16px',
+                  padding: '16px',
+                  fontSize: '1rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  cursor: 'pointer',
+                  boxShadow: '0 10px 20px rgba(255, 90, 31, 0.2)'
+                }}
+              >
+                <Download size={20} />
+                Installa App
+              </button>
+            </div>
+          )}
+
+          <button 
+            onClick={dismissPrompt}
+            style={{ 
+              background: 'none', border: 'none', cursor: 'pointer', 
+              color: '#94a3b8', fontWeight: 600, padding: '8px', 
+              fontSize: '0.95rem', marginTop: '-4px'
             }}
           >
-            <Download size={20} />
-            Scarica l'app
+            Più tardi
           </button>
-        )}
-      </motion.div>
+        </motion.div>
+      </div>
     </AnimatePresence>
   );
 }
