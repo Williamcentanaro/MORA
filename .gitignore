@@ -18,3 +18,11 @@ logs/
 *.sqlite
 *.db-journal
 frontend_build_online/
+*.bak
+*.old
+*.tmp
+.vite/
+.vercel/
+.next/
+.server/
+.client/

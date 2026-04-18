@@ -615,6 +615,7 @@ export default function RestaurantDetailPage() {
                         </div>
                         <div style={{ textAlign: 'right' }}>
                             <div style={{ color: '#94a3b8', fontSize: '0.75rem', fontWeight: 600 }}>
+                              {rev.updatedAt !== rev.createdAt ? 'Modificata il ' : ''}
                               {new Date(rev.updatedAt).toLocaleDateString("it-IT", { day: 'numeric', month: 'short' })}
                             </div>
                             {isOwn && (

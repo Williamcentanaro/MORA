@@ -568,16 +568,24 @@ export const deleteReview = async (req: any, res: Response, next: NextFunction) 
             return;
         }
 
-        await prisma.review.delete({
-            where: {
-                userId_restaurantId: {
-                    userId,
-                    restaurantId
+        try {
+            await prisma.review.delete({
+                where: {
+                    userId_restaurantId: {
+                        userId,
+                        restaurantId
+                    }
                 }
+            });
+            res.status(200).json({ message: "Recensione eliminata con successo" });
+        } catch (dbError: any) {
+            // Prisma "Record not found" -> handled by global middleware but we specifically catch it here for local custom message
+            if (dbError.code === 'P2025') {
+                res.status(404).json({ message: "Recensione non trovata o già eliminata" });
+            } else {
+                throw dbError;
             }
-        });
-
-        res.status(200).json({ message: "Recensione eliminata con successo" });
+        }
     } catch (error) {
         console.error("Error deleting review:", error);
         res.status(500).json({ message: "Errore durante l'eliminazione della recensione", error });

@@ -1,5 +1,20 @@
 node_modules
-# Keep environment variables out of version control
 .env
-
 /generated/prisma
+
+dist
+prisma/dev.db
+prisma/*.db
+prisma/*.db-journal
+*.log
+uploads
+
+# Local development and debug junk in root
+/*.js
+/*.js.map
+/*.d.ts
+/*.d.ts.map
+
+# Allow scripts and essential project files
+!/scripts/
+!/prisma/seed.ts

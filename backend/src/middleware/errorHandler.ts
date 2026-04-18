@@ -14,8 +14,15 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
         return;
     }
 
-    // Prisma specific errors could be handled here if needed
-    // e.g. err.code === 'P2002' for unique constraint
+    // Prisma specific errors
+    if (err.code === 'P2025') {
+        res.status(404).json({
+            success: false,
+            message: "Resource not found",
+            errorCode: "NOT_FOUND"
+        });
+        return;
+    }
 
     const statusCode = err.status || 500;
     const message = err.message || "Internal Server Error";

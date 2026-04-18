@@ -117,6 +117,10 @@ export const updateRestaurantInfo = async (req: AuthRequest, res: Response, next
             return;
         }
 
+        // Parse coordinates as Float if present and not empty
+        const latVal = (latitude !== undefined && latitude !== "") ? parseFloat(latitude as string) : undefined;
+        const lngVal = (longitude !== undefined && longitude !== "") ? parseFloat(longitude as string) : undefined;
+
         const updated = await prisma.restaurant.update({
             where: { id: id as string },
             data: {
@@ -127,8 +131,8 @@ export const updateRestaurantInfo = async (req: AuthRequest, res: Response, next
                 coverImage,
                 gallery: gallery || undefined,
                 cuisineType: cuisineType || undefined,
-                latitude: (latitude && latitude !== "") ? parseFloat(latitude).toString() : undefined,
-                longitude: (longitude && longitude !== "") ? parseFloat(longitude).toString() : undefined
+                latitude: (latVal !== undefined && !isNaN(latVal as number)) ? latVal : undefined,
+                longitude: (lngVal !== undefined && !isNaN(lngVal as number)) ? lngVal : undefined
             }
         });
 

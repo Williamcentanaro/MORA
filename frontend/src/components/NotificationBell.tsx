@@ -28,7 +28,9 @@ export default function NotificationBell() {
       const res = await fetch('/api/notifications', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (res.ok) {
+      
+      const contentType = res.headers.get("content-type");
+      if (res.ok && contentType && contentType.includes("application/json")) {
         const data: Notification[] = await res.json();
         
         // Trigger toasts for NEW unread notifications during polling
