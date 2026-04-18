@@ -3,8 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { 
   LogOut, LayoutDashboard, ChevronRight, 
   MapPin, User, Shield, Bell, Smartphone, Key,
-  UserCircle, SmartphoneIcon, Edit3, X, Save, Lock,
-  Download, Info, Share, MapPinOff
+  UserCircle, SmartphoneIcon, X, Lock,
+  Download, Share, MapPinOff
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,7 +21,16 @@ type UserType = {
   avatar?: string;
 };
 
-const SettingRow = ({ icon: Icon, label, value, status, onClick, color = "var(--primary)" }: any) => (
+interface SettingRowProps {
+  icon: any;
+  label: string;
+  value?: string;
+  status?: string;
+  onClick?: () => void;
+  color?: string;
+}
+
+const SettingRow = ({ icon: Icon, label, value, status, onClick, color = "var(--primary)" }: SettingRowProps) => (
   <div 
     onClick={onClick}
     style={{ 

@@ -1,11 +1,11 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { 
-  Star, User, MapPin, Phone, Globe, Utensils, Info, 
-  ChevronLeft, Share2, Map as MapIcon, Calendar, 
-  Users, Clock, MessageSquare, ChevronRight, X,
-  MapPinOff, Navigation, Heart, Edit2, Trash2,
+  Star, MapPin, Phone, Utensils,
+  ChevronLeft, Share2, 
+  Clock, MessageSquare, X,
+  Navigation, Heart, Edit2, Trash2,
   Camera
 } from "lucide-react";
 import { getRestaurantStatus } from "../utils/isOpenNow";
@@ -51,7 +51,7 @@ export default function RestaurantDetailPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const [showBookingModal, setShowBookingModal] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [currentImageIndex] = useState(0);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -75,10 +75,10 @@ export default function RestaurantDetailPage() {
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
 
   // Refs for Scroll Spy
-  const overviewRef = useRef<HTMLElement>(null);
-  const menuRef = useRef<HTMLElement>(null);
-  const reviewsRef = useRef<HTMLElement>(null);
-  const infoRef = useRef<HTMLElement>(null);
+  const overviewRef = useRef<HTMLElement | null>(null);
+  const menuRef = useRef<HTMLElement | null>(null);
+  const reviewsRef = useRef<HTMLElement | null>(null);
+  const infoRef = useRef<HTMLElement | null>(null);
 
   const token = localStorage.getItem('auth_token');
 
@@ -139,7 +139,7 @@ export default function RestaurantDetailPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const scrollToSection = (tabName: string, ref: React.RefObject<HTMLElement>) => {
+  const scrollToSection = (tabName: string, ref: React.RefObject<HTMLElement | null>) => {
     setActiveTab(tabName);
     if (ref.current) {
         window.scrollTo({
@@ -266,6 +266,7 @@ export default function RestaurantDetailPage() {
   };
 
   const handleShare = async () => {
+    if (!restaurant) return;
     const shareData = {
       title: restaurant.name,
       text: `Guarda questo ristorante su MORA: ${restaurant.name}`,
@@ -318,15 +319,8 @@ export default function RestaurantDetailPage() {
         }
     }
 
-    if (galleryArr.length > 0) {
-      return [restaurant.coverImage, ...galleryArr].filter(Boolean) as string[];
-    }
-
-    if (restaurant.images && typeof restaurant.images === 'string') {
-        const fallbacks = restaurant.images.split(',').filter(Boolean);
-        if (fallbacks.length > 0) return [restaurant.coverImage, ...fallbacks].filter(Boolean) as string[];
-    }
-    return [restaurant.coverImage].filter(Boolean) as string[];
+    const all = [restaurant.coverImage, ...galleryArr].filter(Boolean) as string[];
+    return all.length > 0 ? all : [];
   })();
 
   const heroImage = images.length > 0 ? images[currentImageIndex] : FALLBACK_IMAGE;

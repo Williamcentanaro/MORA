@@ -84,7 +84,7 @@ export default function RestaurantInfoEditor({ restaurant, token, onUpdate }: Re
   const removeGalleryImage = (index: number) => {
     setFormData(prev => ({
         ...prev,
-        gallery: prev.gallery.filter((_, i) => i !== index)
+        gallery: prev.gallery.filter((_: string, i: number) => i !== index)
     }));
   };
   const [saving, setSaving] = useState(false);
@@ -192,11 +192,13 @@ export default function RestaurantInfoEditor({ restaurant, token, onUpdate }: Re
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <label style={{ fontSize: '1rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Civico</label>
-                <input type="text" placeholder="N°" value={formData.address.split(',')[0].split(' ').pop() === formData.address ? "" : formData.address.split(',')[0].split(' ').pop()} onChange={e => {
-                    // This is a bit complex because the editor uses a single address field in existing data
-                    // We'll just let them edit the address field as a whole for now to avoid breaking existing logic
-                    // but we ensure the style is correct.
-                }} disabled style={{ padding: '16px 10px', borderRadius: '14px', fontSize: '1.05rem', border: '2px solid #f1f5f9', textAlign: 'center', background: '#f8fafc' }} />
+                 <input 
+                    type="text" 
+                    placeholder="N°" 
+                    value={formData.address.split(',')[0].split(' ').pop() === formData.address ? "" : formData.address.split(',')[0].split(' ').pop()} 
+                    readOnly
+                    style={{ padding: '16px 10px', borderRadius: '14px', fontSize: '1.05rem', border: '2px solid #f1f5f9', textAlign: 'center', background: '#f8fafc' }} 
+                 />
             </div>
           </div>
         </div>

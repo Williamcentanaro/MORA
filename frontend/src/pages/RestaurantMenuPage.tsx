@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Download, Image as ImageIcon, FileText, Utensils } from "lucide-react";
+import { ArrowLeft, Download, Utensils } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 type Menu = {
