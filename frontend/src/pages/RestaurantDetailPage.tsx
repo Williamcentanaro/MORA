@@ -102,11 +102,13 @@ export default function RestaurantDetailPage() {
         const data = await res.json();
         setRestaurant(data);
 
-        // Fetch follow status
-        const fRes = await fetch(`/api/restaurants/${id}/follow/status`, { headers });
-        if (fRes.ok) {
-          const fData = await fRes.json();
-          setIsFollowing(fData.isFollowing);
+        // Fetch follow status only if authenticated
+        if (token) {
+          const fRes = await fetch(`/api/restaurants/${id}/follow/status`, { headers });
+          if (fRes.ok) {
+            const fData = await fRes.json();
+            setIsFollowing(fData.isFollowing);
+          }
         }
       } catch (err: any) {
         toast.error(err.message);
@@ -183,6 +185,7 @@ export default function RestaurantDetailPage() {
       return;
     }
     if (rating === 0) return toast.error("Seleziona un punteggio");
+    if (!comment.trim()) return toast.error("Inserisci un commento per la tua recensione");
 
     setIsSubmittingReview(true);
     try {

@@ -1,7 +1,14 @@
-import 'dotenv/config';
+import express from 'express';
 console.log('DATABASE_URL:', process.env.DATABASE_URL);
 
-import express from 'express';
+// Environment Validation
+const requiredEnv = ['DATABASE_URL', 'JWT_SECRET', 'FRONTEND_URL', 'ALLOWED_ORIGINS'];
+const missingEnv = requiredEnv.filter(k => !process.env[k]);
+if (missingEnv.length > 0) {
+  console.error(`[CRITICAL] Missing required environment variables: ${missingEnv.join(', ')}`);
+  console.error('[CRITICAL] Please check your .env file or server configuration.');
+  // In production, we might want to process.exit(1), but for now we log clearly.
+}
 import cors from 'cors';
 import authRoutes from './routes/authRoutes';
 import restaurantRoutes from "./routes/restaurantRoutes";
@@ -29,7 +36,7 @@ app.use(helmet({
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms'));
 
 // CORS Hardening
-const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5174', 'http://127.0.0.1:5174', 'http://localhost:3000'];
+const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     if (!origin || allowedOrigins.includes(origin)) {

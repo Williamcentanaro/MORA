@@ -48,15 +48,23 @@ function LoginPage() {
 
   const handleGoogleLogin = () => {
     console.log("[AUTH-LOG] Redirecting to Classic Google OAuth Flow");
-    // Direct redirect to backend endpoint to start server-side OAuth flow
-    const backendUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    const backendUrl = import.meta.env.VITE_API_URL;
+    if (!backendUrl) {
+      console.error("[AUTH-LOG] VITE_API_URL missing!");
+      toast.error("Configurazione di sistema incompleta.");
+      return;
+    }
     window.location.href = `${backendUrl}/api/auth/google`;
   };
 
   const handleFacebookLogin = () => {
     console.log("[AUTH-LOG] Redirecting to Classic Facebook OAuth Flow");
-    // Direct redirect to backend endpoint to start server-side OAuth flow
-    const backendUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    const backendUrl = import.meta.env.VITE_API_URL;
+    if (!backendUrl) {
+      console.error("[AUTH-LOG] VITE_API_URL missing!");
+      toast.error("Configurazione di sistema incompleta.");
+      return;
+    }
     window.location.href = `${backendUrl}/api/auth/facebook`;
   };
 

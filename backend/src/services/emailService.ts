@@ -69,7 +69,7 @@ class EmailService {
    * Send Email Verification
    */
   async sendVerificationEmail(userName: string, userEmail: string, token: string): Promise<boolean> {
-    const verifyLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${token}`;
+    const verifyLink = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
     const html = `
       <div style="font-family: 'Inter', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; border: 1px solid #f1f5f9; border-radius: 24px;">
         <div style="text-align: center; margin-bottom: 32px;">
@@ -116,7 +116,7 @@ class EmailService {
           </ul>
         </div>
         <div style="text-align: center; margin: 32px 0;">
-          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}" 
+          <a href="${process.env.FRONTEND_URL}" 
              style="display: inline-block; background: #000; color: white; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: 700;">
              Inizia l'Esplorazione
           </a>

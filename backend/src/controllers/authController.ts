@@ -57,6 +57,13 @@ export const register = async (req: Request, res: Response, next: NextFunction):
         // Send Professional Verification Email
         await emailService.sendVerificationEmail(user.name || "Utente", user.email, verificationToken);
 
+        // LOGGING PER LOCAL DEV: Stampa il link in console per permettere la verifica senza SMTP reale
+        const frontendUrl = process.env.FRONTEND_URL;
+        console.log("\n=================================================");
+        console.log("[LOCAL-DEV] ACCOUNT VERIFICATION LINK:");
+        console.log(`${frontendUrl}/verify-email?token=${verificationToken}`);
+        console.log("=================================================\n");
+
         console.log(`[AUTH-LOG] New user registered: ${email}. Verification email sent.`);
         res.status(201).json({ 
             message: 'Registrazione completata. Ti abbiamo inviato un’email per verificare il tuo account.', 
@@ -253,7 +260,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
             data: { resetToken: token, resetTokenExpiry: expiry }
         });
 
-        const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
+        const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
         console.log(`[AUTH-LOG] Attempting to send reset email to: ${user.email}`);
         
         const emailSent = await emailService.sendPasswordResetEmail(user.email, resetLink);
@@ -326,7 +333,7 @@ export const startGoogleAuth = (req: Request, res: Response) => {
  * Classic Google OAuth - Step 2: Callback handling
  */
 export const handleGoogleCallback = async (req: Request, res: Response) => {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = process.env.FRONTEND_URL;
     
     try {
         const { code } = req.query;
@@ -433,7 +440,7 @@ export const startFacebookAuth = (req: Request, res: Response) => {
  * Classic Facebook OAuth - Step 2: Callback handling
  */
 export const handleFacebookCallback = async (req: Request, res: Response) => {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = process.env.FRONTEND_URL;
     
     try {
         console.log("[AUTH-FB-LOG] Facebook Callback reached");
