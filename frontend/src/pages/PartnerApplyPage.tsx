@@ -106,7 +106,7 @@ function PartnerApplyPage() {
               {request.status === 'PENDING' && (
                 <div style={{ padding: '20px', background: 'var(--bg-main)', borderRadius: 'var(--radius)', border: '2px solid var(--warning)' }}>
                   <h2 style={{ color: 'var(--warning)', margin: '0 0 10px 0' }}>Richiesta in elaborazione ⏳</h2>
-                  <p style={{ color: 'var(--text-muted)', margin: 0 }}>Grazie per aver scelto Sabor Latino! Stiamo esaminando la tua proposta per <strong>{request.businessName}</strong>.</p>
+                  <p style={{ color: 'var(--text-muted)', margin: 0 }}>Grazie per aver scelto MORA! Stiamo esaminando la tua proposta per <strong>{request.businessName}</strong>.</p>
                 </div>
               )}
               {request.status === 'APPROVED' && (

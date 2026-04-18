@@ -2,6 +2,10 @@ import { useEffect, useState, useMemo, lazy, Suspense } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import CuisineBubbles from "../components/home/CuisineBubbles";
 import { Search, Map } from "lucide-react";
+import FilterChips from "../components/home/FilterChips";
+import CtaSection from "../components/home/CtaSection";
+import FilterModal from "../components/home/FilterModal";
+import { getRestaurantStatus } from "../utils/isOpenNow";
 
 const PopularRestaurants = lazy(() => import("../components/home/PopularRestaurants"));
 
@@ -55,10 +59,22 @@ export default function HomePage() {
   
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   
-  const loadRestaurants = async () => {
+  // New Filter state
+  const [minRating, setMinRating] = useState<number | null>(null);
+  const [openNow, setOpenNow] = useState(false);
+  const [maxDistance, setMaxDistance] = useState<number | null>(null);
+  const [maxPrice, setMaxPrice] = useState<number | null>(null);
+  
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
+  const loadRestaurants = async (query?: string, price?: number | null) => {
     try {
       setLoading(true);
-      const res = await fetch("/api/restaurants");
+      let url = "/api/restaurants?limit=50";
+      if (query) url += `&search=${encodeURIComponent(query)}`;
+      if (price) url += `&maxPrice=${price}`;
+      
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       let data: Restaurant[] = await res.json();
       if (!Array.isArray(data)) data = [];
@@ -71,10 +87,14 @@ export default function HomePage() {
     }
   };
 
+  // Effect for initial load and filter changes
   useEffect(() => {
-    // Note: To keep things ultra fast on home, we load restaurants without waiting for geolocation.
-    loadRestaurants();
-  }, []);
+    const timer = setTimeout(() => {
+        loadRestaurants(searchQuery, maxPrice);
+    }, searchQuery ? 400 : 0); // Debounce if typing
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, maxPrice]);
 
   const filteredRestaurants = useMemo(() => {
     let result = restaurants;
@@ -90,9 +110,17 @@ export default function HomePage() {
 
         if (!matchName && !matchAddress && !matchDesc && !matchCuisine) return false;
       }
+      
+      if (minRating && (typeof r.averageRating !== 'number' || r.averageRating < minRating)) return false;
+      if (maxDistance && r.distance && r.distance > maxDistance) return false;
+      if (openNow && getRestaurantStatus(r.openingHours) !== 'OPEN') return false;
+      
+      // maxPrice and searchQuery matched items are already filtered by backend
+      // so we don't need additional client-side checks for those specific fields.
+      
       return true;
     });
-  }, [restaurants, searchQuery]);
+  }, [restaurants, searchQuery, minRating, maxDistance, openNow]);
 
   const navigate = useNavigate();
   const handleOpenMap = () => {
@@ -101,38 +129,86 @@ export default function HomePage() {
       navigate(`/map?${params.toString()}`);
   }
 
+  const handleClearAll = () => {
+    setSearchQuery("");
+    setMinRating(null);
+    setOpenNow(false);
+    setMaxDistance(null);
+    setMaxPrice(null);
+  };
+
   return (
     <div style={{ paddingTop: '0px', backgroundColor: '#f8fafc', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       
+      {/* Premium Ambient Video Header */}
+      <div style={{ padding: '16px 20px 0', background: 'white' }}>
+        <div style={{ width: '100%', height: '160px', borderRadius: '24px', overflow: 'hidden', position: 'relative', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}>
+          <video 
+            autoPlay 
+            muted 
+            loop 
+            playsInline 
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          >
+            <source src="/videos/hero.mp4" type="video/mp4" />
+          </video>
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to top, rgba(0,0,0,0.5), transparent)', zIndex: 1 }} />
+          <div style={{ position: 'absolute', bottom: 16, left: 16, zIndex: 2, color: 'white' }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>Cerca e prenota</h2>
+            <p style={{ fontSize: '0.85rem', opacity: 0.9, margin: 0, fontWeight: 500 }}>Esplora, degusta e vivi nuove esperienze</p>
+          </div>
+        </div>
+      </div>
+
       {/* Clean Mobile-First Search Header */}
       <div style={{ background: 'white', padding: '16px 20px', borderBottom: '1px solid var(--border)', position: 'sticky', top: '65px', zIndex: 90 }}>
-          <div className="container" style={{ display: 'flex', gap: '12px' }}>
-              <div style={{ flex: 1, position: 'relative' }}>
-                <Search size={20} style={{ position: 'absolute', left: 16, top: 14, color: 'var(--text-muted)' }} />
-                <input 
-                  type="text" 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Cerca un ristorante, un piatto o una città..."
-                  style={{ width: '100%', padding: '14px 16px 14px 44px', borderRadius: '16px', border: '1px solid var(--border)', fontSize: '1rem', background: '#f8fafc', fontWeight: 500 }}
-                />
-              </div>
-              
-              <button 
-                onClick={handleOpenMap}
-                style={{ 
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', 
-                  padding: '0 20px', borderRadius: '16px', fontSize: '0.95rem', fontWeight: 700,
-                  background: 'white', color: 'var(--text-main)', 
-                  border: '1px solid var(--border)',
-                  transition: 'all 0.2s', cursor: 'pointer'
-                }}
-              >
-                <Map size={18} />
-                <span className="hide-on-mobile">Mappa</span>
-              </button>
+          <div className="container" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ flex: 1, position: 'relative' }}>
+                  <Search size={20} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input 
+                    type="text" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Cerca piatto, ristorante o città..."
+                    style={{ width: '100%', padding: '16px 16px 16px 44px', borderRadius: '20px', border: '1px solid transparent', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', fontSize: '1rem', background: '#f8fafc', fontWeight: 600, color: 'var(--text-main)', transition: 'all 0.3s' }}
+                  />
+                </div>
+                
+                <button 
+                  onClick={handleOpenMap}
+                  style={{ 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', 
+                    padding: '0 16px', borderRadius: '20px', fontSize: '0.95rem', fontWeight: 700,
+                    background: 'var(--primary)', color: 'white', 
+                    border: 'none', boxShadow: '0 4px 12px rgba(255, 90, 31, 0.2)',
+                    transition: 'all 0.2s', cursor: 'pointer'
+                  }}
+                >
+                  <Map size={20} />
+                </button>
+            </div>
+            
+            <FilterChips 
+              minRating={minRating} setMinRating={setMinRating}
+              openNow={openNow} setOpenNow={setOpenNow}
+              maxDistance={maxDistance} setMaxDistance={setMaxDistance}
+              maxPrice={maxPrice} setMaxPrice={setMaxPrice}
+              searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+              onOpenFilterModal={() => setIsFilterModalOpen(true)}
+              onClearAll={handleClearAll}
+            />
           </div>
       </div>
+
+      <FilterModal 
+        isOpen={isFilterModalOpen} 
+        onClose={() => setIsFilterModalOpen(false)}
+        minRating={minRating} setMinRating={setMinRating}
+        openNow={openNow} setOpenNow={setOpenNow}
+        maxDistance={maxDistance} setMaxDistance={setMaxDistance}
+        maxPrice={maxPrice} setMaxPrice={setMaxPrice}
+      />
 
       <CuisineBubbles 
         selectedCuisine={searchQuery}
@@ -163,6 +239,8 @@ export default function HomePage() {
           </Suspense>
         )}
       </div>
+
+      <CtaSection />
     </div>
   );
 }

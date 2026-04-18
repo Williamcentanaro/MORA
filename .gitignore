@@ -8,12 +8,13 @@ build/
 coverage/
 logs/
 *.log
+*.txt
+*.zip
+*.tar.gz
 .DS_Store
 .vscode/
 .idea/
 *.db
 *.sqlite
 *.db-journal
-*.zip
-*.tar.gz
 frontend_build_online/

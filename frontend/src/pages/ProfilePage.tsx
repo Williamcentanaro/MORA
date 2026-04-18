@@ -1,53 +1,101 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { 
+  LogOut, LayoutDashboard, ChevronRight, 
+  MapPin, User, Shield, Bell, Smartphone, Key,
+  UserCircle, SmartphoneIcon, Edit3, X, Save, Lock,
+  Download, Info, Share, MapPinOff
+} from "lucide-react";
 import { toast } from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { getRestaurantStatus } from "../utils/isOpenNow";
-import type { OpeningHour } from "../utils/isOpenNow";
 import { usePushNotifications } from "../hooks/usePushNotifications";
+import { usePWA } from "../hooks/usePWA";
+import { useGeolocation } from "../hooks/useGeolocation";
 
-type User = {
+type UserType = {
   id: string;
   email: string;
   name: string;
+  surname: string | null;
   role: string;
+  avatar?: string;
 };
 
-type Restaurant = {
-  id: string;
-  name: string;
-  city: string;
-  coverImage?: string | null;
-  openingHours: OpeningHour[];
-  hasTodayMenu: boolean;
-};
-
-const LoadingSkeleton = () => (
-  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '32px' }}>
-    {[1, 2, 3].map(i => (
-      <div key={i} className="card" style={{ padding: 0, overflow: 'hidden', height: '420px', background: 'white', border: '1px solid #f1f5f9' }}>
-        <div className="skeleton" style={{ height: '220px', borderRadius: 0 }} />
-        <div style={{ padding: '24px' }}>
-          <div className="skeleton" style={{ height: '24px', width: '70%', marginBottom: '12px' }} />
-          <div className="skeleton" style={{ height: '16px', width: '40%', marginBottom: '24px' }} />
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <div className="skeleton" style={{ height: '48px', flex: 2, borderRadius: '14px' }} />
-            <div className="skeleton" style={{ height: '48px', flex: 1, borderRadius: '14px' }} />
-          </div>
-        </div>
-      </div>
-    ))}
+const SettingRow = ({ icon: Icon, label, value, status, onClick, color = "var(--primary)" }: any) => (
+  <div 
+    onClick={onClick}
+    style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      padding: '16px', 
+      background: 'white', 
+      borderRadius: '20px', 
+      marginBottom: '12px',
+      border: '1px solid #f1f5f9',
+      cursor: onClick ? 'pointer' : 'default',
+      transition: 'all 0.2s ease'
+    }}
+    className={onClick ? "setting-row-hover" : ""}
+  >
+    <div style={{ 
+      width: '42px', 
+      height: '42px', 
+      borderRadius: '12px', 
+      backgroundColor: `${color}15`, 
+      color: color,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: '16px'
+    }}>
+      <Icon size={20} />
+    </div>
+    <div style={{ flex: 1 }}>
+      <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}>{label}</p>
+      {value && <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', fontWeight: 500 }}>{value}</p>}
+    </div>
+    {status && (
+      <span style={{ 
+        padding: '4px 10px', 
+        borderRadius: '10px', 
+        fontSize: '0.65rem', 
+        fontWeight: 800, 
+        textTransform: 'uppercase',
+        backgroundColor: status === 'Attivo' || status === 'ON' || status === 'Installata' ? '#dcfce7' : '#f1f5f9',
+        color: status === 'Attivo' || status === 'ON' || status === 'Installata' ? '#166534' : '#64748b'
+      }}>
+        {status}
+      </span>
+    )}
+    {onClick && <ChevronRight size={18} style={{ color: '#cbd5e1', marginLeft: '8px' }} />}
   </div>
 );
 
 function ProfilePage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [followedRestaurants, setFollowedRestaurants] = useState<Restaurant[]>([]);
+  const [user, setUser] = useState<UserType | null>(null);
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const { isSubscribed, permissionState, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
+  
+  // Account State
+  const [isEditingInfo, setIsEditingInfo] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newSurname, setNewSurname] = useState("");
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
 
+  // Device & Permissions
+  const { isInstallable, isInstalled, platform: pwaPlatform, install } = usePWA();
+  const { permission: geoPermission, request: requestGeo } = useGeolocation();
+
+  const { isSubscribed, permissionState, subscribe, unsubscribe } = usePushNotifications();
   const token = localStorage.getItem('auth_token');
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const fetchData = async () => {
     if (!token) {
@@ -58,22 +106,15 @@ function ProfilePage() {
 
     try {
       setLoading(true);
-      
-      const [userRes, followsRes] = await Promise.all([
-        fetch("/api/auth/me", { headers: { "Authorization": `Bearer ${token}` } }),
-        fetch("/api/restaurants/followed", { headers: { "Authorization": `Bearer ${token}` } })
-      ]);
+      const userRes = await fetch("/api/auth/me", { headers: { "Authorization": `Bearer ${token}` } });
 
       if (userRes.ok) {
         const userData = await userRes.json();
         setUser(userData.user);
+        setNewName(userData.user.name || "");
+        setNewSurname(userData.user.surname || "");
       } else {
         throw new Error("Impossibile caricare i dati utente");
-      }
-
-      if (followsRes.ok) {
-        const followsData = await followsRes.json();
-        setFollowedRestaurants(followsData);
       }
     } catch (err: any) {
       console.error(err);
@@ -83,28 +124,50 @@ function ProfilePage() {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const handleUnfollow = async (restaurantId: string) => {
+  const handleUpdateProfile = async (data: { name?: string; surname?: string; currentPassword?: string; newPassword?: string }) => {
     try {
-      const res = await fetch(`/api/restaurants/${restaurantId}/follow`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+      setIsUpdating(true);
+      const res = await fetch("/api/auth/me", {
+        method: 'PUT',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
       });
 
+      const result = await res.json();
+
       if (res.ok) {
-        toast.success("Locale rimosso dai seguiti");
-        setFollowedRestaurants(prev => prev.filter(r => r.id !== restaurantId));
+        setUser(result.user);
+        toast.success("Profilo aggiornato con successo");
+        setIsEditingInfo(false);
+        setShowPasswordModal(false);
+        setCurrentPassword("");
+        setNewPassword("");
       } else {
-        toast.error("Errore durante l'azione");
+        toast.error(result.message || "Errore durante l'aggiornamento");
       }
     } catch (err) {
-      console.error(err);
       toast.error("Errore di connessione");
+    } finally {
+      setIsUpdating(false);
     }
   };
+
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    toast.success("Logout effettuato");
+    navigate('/login');
+  };
+
+  if (loading) {
+    return (
+      <div className="container" style={{ padding: '100px 20px', textAlign: 'center' }}>
+        <div className="skeleton" style={{ height: '300px', borderRadius: '32px', maxWidth: '600px', margin: '0 auto' }} />
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -121,294 +184,282 @@ function ProfilePage() {
 
   return (
     <div style={{ backgroundColor: '#fdfcfe', minHeight: '100vh', paddingBottom: 100 }}>
-      {/* Premium Header Section */}
       <div className="profile-header-section" style={{ 
         background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)', 
-        padding: '100px 0 80px', 
+        padding: '80px 0 60px', 
         color: 'white',
         position: 'relative',
         overflow: 'hidden'
       }}>
-        {/* Decorative elements */}
         <div style={{ position: 'absolute', top: '-100px', right: '-100px', width: '300px', height: '300px', background: 'var(--primary)', filter: 'blur(150px)', opacity: 0.3 }} />
         <div style={{ position: 'absolute', bottom: '-100px', left: '-100px', width: '300px', height: '300px', background: '#ff6b6b', filter: 'blur(150px)', opacity: 0.2 }} />
 
         <div className="container">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="profile-card"
-            style={{ 
-              background: 'rgba(255,255,255,0.05)', 
-              backdropFilter: 'blur(20px)', 
-              borderRadius: '32px', 
-              padding: '40px',
-              border: '1px solid rgba(255,255,255,0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '40px',
-              flexWrap: 'wrap',
-              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }} className="profile-card-inner">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '24px', position: 'relative', zIndex: 2 }}>
+            <div style={{ position: 'relative' }}>
               <div 
-                className="profile-avatar"
                 style={{ 
-                  width: '120px', 
-                  height: '120px', 
-                  background: 'linear-gradient(45deg, var(--primary), #ff6b6b)', 
-                  borderRadius: '30px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  fontSize: '3.5rem',
-                  color: 'white',
-                  fontWeight: 900,
-                  boxShadow: '0 10px 30px rgba(255,51,102,0.3)',
-                  border: '4px solid rgba(255,255,255,0.2)'
+                  width: '90px', height: '90px', 
+                  background: user?.avatar ? `url(${user.avatar}) center/cover no-repeat` : 'linear-gradient(45deg, var(--primary), #ff6b6b)', 
+                  borderRadius: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '2.5rem', color: 'white', fontWeight: 900,
+                  boxShadow: '0 10px 30px rgba(255,51,102,0.3)', border: '3px solid rgba(255,255,255,0.2)'
                 }}
               >
-                {(user?.name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
-              </div>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                  <h1 className="profile-name" style={{ margin: 0, fontSize: '2.4rem', fontWeight: 900, letterSpacing: '-0.02em', color: 'white' }}>{user?.name || "Utente"}</h1>
-                    <span 
-                      className="profile-badge"
-                      style={{ 
-                        background: 'linear-gradient(to right, #fbbf24, #f59e0b)', 
-                        padding: '6px 14px', 
-                        borderRadius: '20px', 
-                        fontSize: '0.7rem', 
-                        fontWeight: 800,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                        color: '#451a03',
-                        boxShadow: '0 4px 12px rgba(245,158,11,0.2)'
-                      }}
-                    >
-                      ✨ Food Explorer
-                    </span>
-                    <button 
-                      onClick={() => {
-                        if (permissionState === 'denied') {
-                          toast.error("Permesso negato. Abilita le notifiche nelle impostazioni del browser.");
-                          return;
-                        }
-                        isSubscribed ? unsubscribe() : subscribe();
-                      }}
-                      disabled={pushLoading}
-                      className="profile-badge"
-                      style={{
-                        background: permissionState === 'denied' ? 'rgba(239, 68, 68, 0.2)' : (isSubscribed ? 'rgba(34, 197, 94, 0.2)' : 'rgba(255, 255, 255, 0.1)'),
-                        border: `1px solid ${permissionState === 'denied' ? '#ef4444' : 'rgba(255, 255, 255, 0.2)'}`,
-                        color: 'white',
-                        padding: '6px 14px',
-                        borderRadius: '20px',
-                        fontSize: '0.7rem',
-                        fontWeight: 700,
-                        cursor: permissionState === 'denied' ? 'not-allowed' : 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        transition: 'all 0.3s ease'
-                      }}
-                    >
-                      {pushLoading ? '...' : (permissionState === 'denied' ? '🚫 Permesso' : (isSubscribed ? '🔔 ON' : '🔕 OFF'))}
-                    </button>
-                  </div>
-                <p style={{ margin: 0, fontSize: '1.1rem', opacity: 0.7, fontWeight: 500 }}>{user?.email}</p>
-                <div style={{ marginTop: '16px', display: 'flex', gap: '24px' }}>
-                  <div>
-                    <span className="profile-stats-value" style={{ display: 'block', fontSize: '1.5rem', fontWeight: 900 }}>{followedRestaurants.length}</span>
-                    <span style={{ fontSize: '0.8rem', opacity: 0.6, fontWeight: 600, textTransform: 'uppercase' }}>Locali Seguiti</span>
-                  </div>
-                  <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }} />
-                  <div>
-                    <span className="profile-stats-value" style={{ display: 'block', fontSize: '1.5rem', fontWeight: 900 }}>Account</span>
-                    <span style={{ fontSize: '0.8rem', opacity: 0.6, fontWeight: 600, textTransform: 'uppercase' }}>{user?.role}</span>
-                  </div>
-                </div>
+                {!user?.avatar && (user?.name?.[0] || 'U').toUpperCase()}
               </div>
             </div>
-          </motion.div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 900, letterSpacing: '-0.02em' }}>{user?.name} {user?.surname}</h1>
+                <span style={{ 
+                    background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
+                    padding: '2px 8px', borderRadius: '8px', fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase'
+                }}>
+                    {user?.role === 'owner' || user?.role === 'RESTAURANT_OWNER' ? 'Owner' : 'Explorer'}
+                </span>
+              </div>
+              <p style={{ margin: 0, opacity: 0.7, fontWeight: 500, fontSize: '0.95rem' }}>{user?.email}</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="container" style={{ marginTop: '60px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '40px' }}>
+      <div className="container" style={{ marginTop: '-30px', position: 'relative', zIndex: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px' }}>
+          
           <div>
-            <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
-              I tuoi locali seguiti
-            </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '4px' }}>
-              Gestisci i ristoranti che ami e resta aggiornato sulle loro novità.
-            </p>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e293b', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <UserCircle size={20} color="var(--primary)" />
+              Informazioni Personali
+            </h3>
+            
+            {!isEditingInfo ? (
+              <SettingRow 
+                icon={User} 
+                label="Dati Identità" 
+                value={`${user?.name} ${user?.surname || ""}`} 
+                onClick={() => setIsEditingInfo(true)} 
+              />
+            ) : (
+              <div style={{ background: 'white', padding: '24px', borderRadius: '24px', marginBottom: '12px', border: '2px solid var(--primary-light)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b' }}>NOME</label>
+                  <input 
+                    type="text" 
+                    value={newName} 
+                    onChange={e => setNewName(e.target.value)}
+                    style={{ background: '#f8fafc', border: '1px solid #f1f5f9', padding: '12px', borderRadius: '12px', fontWeight: 600, fontSize: '0.9rem' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                   <label style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b' }}>COGNOME</label>
+                   <input 
+                      type="text" 
+                      value={newSurname} 
+                      onChange={e => setNewSurname(e.target.value)}
+                      style={{ background: '#f8fafc', border: '1px solid #f1f5f9', padding: '12px', borderRadius: '12px', fontWeight: 600, fontSize: '0.9rem' }}
+                   />
+                </div>
+                <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                  <button onClick={() => setIsEditingInfo(false)} className="btn btn-secondary" style={{ flex: 1, padding: '12px', borderRadius: '12px' }}>Annulla</button>
+                  <button onClick={() => handleUpdateProfile({ name: newName, surname: newSurname })} disabled={isUpdating} className="btn btn-primary" style={{ flex: 1, padding: '12px', borderRadius: '12px' }}>Salva</button>
+                </div>
+              </div>
+            )}
+
+            {/* MANAGEMENT AREA (ADMIN/OWNER ONLY) */}
+            {(user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'OWNER' || user?.role?.toUpperCase() === 'RESTAURANT_OWNER') && (
+              <div style={{ marginBottom: '24px', padding: '20px', background: 'linear-gradient(135deg, #fffcf0 0%, #fff9e6 100%)', borderRadius: '28px', border: '1px solid #fef3c7' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 900, color: '#92400e', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <LayoutDashboard size={20} color="#d97706" />
+                  Area Gestione
+                </h3>
+
+                {user?.role?.toUpperCase() === 'ADMIN' && (
+                  <SettingRow 
+                    icon={Shield} 
+                    label="Dashboard Amministratore" 
+                    value="Gestione globale della piattaforma" 
+                    onClick={() => navigate('/admin/dashboard')}
+                    color="#2563eb"
+                  />
+                )}
+
+                {(user?.role?.toUpperCase() === 'OWNER' || user?.role?.toUpperCase() === 'RESTAURANT_OWNER') && (
+                  <SettingRow 
+                    icon={LayoutDashboard} 
+                    label="Dashboard Ristoratore" 
+                    value="Gestione locali e prenotazioni" 
+                    onClick={() => navigate('/owner/dashboard')}
+                    color="#f59e0b"
+                  />
+                )}
+              </div>
+            )}
+
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e293b', marginBottom: '16px', marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Shield size={20} color="var(--primary)" />
+              Sicurezza Account
+            </h3>
+
+            <SettingRow 
+              icon={Key} 
+              label="Cambia Password" 
+              value="Proteggi il tuo account" 
+              onClick={() => setShowPasswordModal(true)} 
+            />
+          </div>
+
+          <div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e293b', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Smartphone size={20} color="var(--primary)" />
+              App & Dispositivo
+            </h3>
+
+            {/* PWA SECTION */}
+            <div style={{ background: 'white', borderRadius: '24px', padding: '20px', marginBottom: '24px', border: '1px solid #f1f5f9', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '16px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: isInstalled ? '#dcfce7' : 'var(--primary-light)', color: isInstalled ? '#166534' : 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <SmartphoneIcon size={24} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: '1rem', fontWeight: 800 }}>MORA Web App</h4>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: 1.4 }}>
+                    {isInstalled 
+                      ? "L'applicazione è correttamente installata sul tuo dispositivo." 
+                      : "Installa MORA sul tuo dispositivo per un accesso più veloce."}
+                  </p>
+                </div>
+                {isInstalled && <span style={{ padding: '4px 10px', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 800, backgroundColor: '#dcfce7', color: '#166534', textTransform: 'uppercase' }}>ATTIVA ✔️</span>}
+              </div>
+
+              {!isInstalled && (
+                <div style={{ background: '#f8fafc', borderRadius: '16px', padding: '16px' }}>
+                  {isInstallable ? (
+                    <button 
+                      onClick={install}
+                      style={{ width: '100%', padding: '12px', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    >
+                      <Download size={18} /> Installa app
+                    </button>
+                  ) : (
+                    <div style={{ fontSize: '0.85rem', color: '#1e293b' }}>
+                      <p style={{ margin: 0, color: '#64748b', lineHeight: 1.5 }}>
+                        Apri il menu del browser ({pwaPlatform === 'ios' ? <Share size={14} style={{ display: 'inline', verticalAlign: 'middle' }} /> : 'in alto a destra'}) e seleziona <strong>“Installa app”</strong> oppure <strong>“Aggiungi alla schermata principale”</strong>.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <SettingRow 
+              icon={Bell} 
+              label="Notifiche Smart" 
+              value="Ricevi alert su menu ed eventi"
+              status={permissionState === 'granted' ? 'ON' : 'OFF'}
+              onClick={() => isSubscribed ? unsubscribe() : subscribe()}
+            />
+
+            {/* LOCATION SECTION */}
+            <div style={{ background: 'white', borderRadius: '24px', padding: '20px', marginBottom: '12px', border: '1px solid #f1f5f9', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)' }}>
+               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: geoPermission === 'granted' ? 0 : '16px' }}>
+                <div style={{ 
+                  width: '48px', height: '48px', borderRadius: '14px', 
+                  background: geoPermission === 'granted' ? '#dcfce7' : (geoPermission === 'denied' ? '#fee2e2' : '#fef3c7'), 
+                  color: geoPermission === 'granted' ? '#166534' : (geoPermission === 'denied' ? '#ef4444' : '#d97706'), 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center' 
+                }}>
+                  {geoPermission === 'denied' ? <MapPinOff size={24} /> : <MapPin size={24} />}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: '1rem', fontWeight: 800 }}>
+                    {geoPermission === 'denied' ? 'Permesso posizione negato' : 'Posizione'}
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: 1.4 }}>
+                    {geoPermission === 'granted' && "Posizione attiva"}
+                    {geoPermission === 'prompt' && "Attiva la posizione per trovare locali vicino a te"}
+                    {geoPermission === 'denied' && "Attiva la posizione dalle impostazioni del browser per usare questa funzione"}
+                    {geoPermission === 'loading' && "Verifica permessi in corso..."}
+                  </p>
+                </div>
+                {geoPermission === 'granted' && <span style={{ padding: '4px 10px', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 800, backgroundColor: '#dcfce7', color: '#166534', textTransform: 'uppercase' }}>ATTIVA ✔️</span>}
+              </div>
+
+              {geoPermission === 'prompt' && (
+                <button 
+                  onClick={() => requestGeo().catch(() => toast.error("Permesso negato"))}
+                  style={{ width: '100%', marginTop: '16px', padding: '12px', border: '2px solid var(--primary)', background: 'transparent', color: 'var(--primary)', borderRadius: '12px', fontWeight: 800, cursor: 'pointer' }}
+                >
+                  Consenti posizione
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
-        {loading ? (
-          <LoadingSkeleton />
-        ) : (
-          <AnimatePresence mode="popLayout">
-            {followedRestaurants.length > 0 ? (
-              <motion.div 
-                layout
-                style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '32px' }}
-              >
-                {followedRestaurants.map((restaurant, idx) => {
-                  const status = getRestaurantStatus(restaurant.openingHours);
-                  const isOpen = status === 'OPEN';
-
-                  return (
-                    <motion.div
-                      key={restaurant.id}
-                      layout
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-                      transition={{ delay: idx * 0.05 }}
-                      className="card"
-                      style={{ 
-                        padding: 0, 
-                        overflow: 'hidden', 
-                        display: 'flex', 
-                        flexDirection: 'column',
-                        border: '1px solid #f1f5f9',
-                        borderRadius: '24px',
-                        background: 'white',
-                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)'
-                      }}
-                    >
-                      <div style={{ position: 'relative', height: '220px', overflow: 'hidden' }}>
-                        <img 
-                          src={restaurant.coverImage || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=800'} 
-                          alt={restaurant.name} 
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease' }} 
-                        />
-                        <div style={{ 
-                          position: 'absolute', 
-                          top: '16px', 
-                          left: '16px',
-                          display: 'flex',
-                          gap: '8px'
-                        }}>
-                          <span style={{ 
-                            background: isOpen ? '#22c55e' : '#64748b', 
-                            color: 'white', 
-                            padding: '6px 12px', 
-                            borderRadius: '12px', 
-                            fontSize: '0.7rem', 
-                            fontWeight: 800,
-                            textTransform: 'uppercase',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                          }}>
-                            {isOpen ? 'Aperto ora' : 'Chiuso'}
-                          </span>
-                          {restaurant.hasTodayMenu && (
-                            <span style={{ 
-                              background: 'var(--primary)', 
-                              color: 'white', 
-                              padding: '6px 12px', 
-                              borderRadius: '12px', 
-                              fontSize: '0.7rem', 
-                              fontWeight: 800,
-                              textTransform: 'uppercase',
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                            }}>
-                              Menu del giorno ✨
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div style={{ padding: '24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ marginBottom: '20px' }}>
-                          <h3 style={{ margin: '0 0 4px 0', fontSize: '1.4rem', fontWeight: 900, color: '#1e293b' }}>{restaurant.name}</h3>
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            📍 {restaurant.city}
-                          </span>
-                        </div>
-                        
-                        <div style={{ display: 'flex', gap: '12px', marginTop: 'auto' }}>
-                          <Link 
-                            to={`/restaurants/${restaurant.id}`} 
-                            className="btn btn-primary" 
-                            style={{ 
-                              flex: 2, 
-                              textAlign: 'center', 
-                              fontSize: '0.95rem', 
-                              fontWeight: 700,
-                              padding: '14px',
-                              borderRadius: '14px'
-                            }}
-                          >
-                            Vai al ristorante
-                          </Link>
-                          <button 
-                            onClick={() => handleUnfollow(restaurant.id)} 
-                            className="btn" 
-                            style={{ 
-                              flex: 1,
-                              background: '#fef2f2', 
-                              color: '#ef4444', 
-                              border: 'none',
-                              fontSize: '0.9rem',
-                              fontWeight: 700,
-                              padding: '14px',
-                              borderRadius: '14px'
-                            }}
-                          >
-                            Rimuovi
-                          </button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </motion.div>
-            ) : (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                style={{ 
-                  textAlign: 'center', 
-                  padding: '100px 40px', 
-                  backgroundColor: 'white', 
-                  borderRadius: '40px',
-                  border: '2px dashed #e2e8f0',
-                  boxShadow: '0 10px 30px rgba(0,0,0,0.02)'
-                }}
-              >
-                <div style={{ fontSize: '5rem', marginBottom: '32px' }}>🍽️</div>
-                <h3 style={{ fontWeight: 900, fontSize: '1.8rem', marginBottom: '12px', color: '#1e293b' }}>Non segui ancora nessun locale</h3>
-                <p style={{ color: 'var(--text-muted)', marginBottom: '32px', fontSize: '1.1rem', maxWidth: '400px', margin: '0 auto 32px' }}>
-                  Inizia a esplorare i migliori locali intorno a te e aggiungili ai tuoi preferiti!
-                </p>
-                <Link to="/" className="btn btn-primary" style={{ padding: '16px 40px', borderRadius: '18px', fontSize: '1.1rem', fontWeight: 700 }}>Scopri ristoranti</Link>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        )}
+        <button 
+           onClick={handleLogout}
+           style={{ 
+             width: '100%', marginTop: '40px', padding: '16px', borderRadius: '18px', 
+             border: '1px solid #fee2e2', background: '#fef2f2', color: '#ef4444', 
+             fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' 
+           }}
+        >
+          <LogOut size={20} />
+          Chiudi Sessione
+        </button>
       </div>
 
+      <AnimatePresence>
+        {showPasswordModal && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} style={{ background: 'white', borderRadius: '32px', padding: '40px', width: '100%', maxWidth: '420px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.4rem' }}>Sicurezza Password</h3>
+                <button onClick={() => setShowPasswordModal(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><X size={24} /></button>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}><Lock size={12}/> PASSWORD ATTUALE</label>
+                  <input 
+                    type="password" 
+                    placeholder="••••••••" 
+                    value={currentPassword}
+                    onChange={e => setCurrentPassword(e.target.value)}
+                    style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '16px', borderRadius: '14px', fontWeight: 600 }}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b' }}>NUOVA PASSWORD</label>
+                  <input 
+                    type="password" 
+                    placeholder="Minimo 8 caratteri" 
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '16px', borderRadius: '14px', fontWeight: 600 }}
+                  />
+                </div>
+                
+                <button 
+                  onClick={() => handleUpdateProfile({ currentPassword, newPassword })}
+                  disabled={isUpdating || newPassword.length < 8 || !currentPassword}
+                  className="btn btn-primary"
+                  style={{ width: '100%', padding: '18px', borderRadius: '16px', fontWeight: 800, marginTop: '12px' }}
+                >
+                  {isUpdating ? 'Sincronizzazione...' : 'Aggiorna Credenziali'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <style>{`
-        @keyframes pulse {
-          0% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(0.98); }
-          100% { opacity: 1; transform: scale(1); }
-        }
-        .card:hover {
-          transform: translateY(-8px) scale(1.01);
-          box-shadow: 0 20px 40px rgba(0,0,0,0.08) !important;
-          border-color: var(--primary-light) !important;
-        }
-        .card:hover img {
-          transform: scale(1.05);
-        }
+        .setting-row-hover:active { transform: scale(0.98); }
+        .setting-row-hover:hover { background-color: #f8fafc !important; border-color: var(--primary-light) !important; }
       `}</style>
     </div>
   );

@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import MapSection from "../components/home/MapSection";
+import MapComponent from "../components/MapComponent";
 import { calculateDistance } from "../utils/distance";
 
 type Restaurant = {
@@ -83,13 +83,24 @@ export default function MapPage() {
   }, [restaurants, searchQuery, selectedCity, userLocation]);
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, background: 'white', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ 
+      position: 'fixed', 
+      top: 0, 
+      left: 0, 
+      right: 0, 
+      height: '100dvh', // Modern dynamic viewport height
+      zIndex: 9999, 
+      background: 'white', 
+      display: 'flex', 
+      flexDirection: 'column',
+      overflow: 'hidden'
+    }}>
       
       {/* Absolute Header Overlay over map */}
       <div style={{
           position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10000, 
           padding: 'calc(env(safe-area-inset-top) + 16px) 20px 16px',
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 100%)',
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 100%)',
           pointerEvents: 'none'
       }}>
           <button 
@@ -104,10 +115,11 @@ export default function MapPage() {
           </button>
       </div>
 
-      <div style={{ flex: 1, position: 'relative' }}>
-        <MapSection 
+      <div style={{ flex: 1, position: 'relative', width: '100%' }}>
+        <MapComponent 
            restaurants={filteredRestaurants}
            userLocation={userLocation}
+           fullHeight={true}
         />
       </div>
 

@@ -1,15 +1,33 @@
 import { Link, useLocation } from "react-router-dom";
-import { Compass, CalendarDays, Heart, User } from "lucide-react";
+import { Compass, CalendarDays, Heart, User, LayoutDashboard, ShieldCheck } from "lucide-react";
 
-export default function BottomNav() {
+interface BottomNavProps {
+  user?: {
+    role: string;
+    name: string;
+  } | null;
+}
+
+export default function BottomNav({ user }: BottomNavProps) {
   const location = useLocation();
 
   const navItems = [
     { name: "Esplora", path: "/", icon: <Compass size={24} /> },
     { name: "Eventi", path: "/events", icon: <CalendarDays size={24} /> },
-    { name: "Preferiti", path: "/favorites", icon: <Heart size={24} /> },
-    { name: "Profilo", path: "/profile", icon: <User size={24} /> },
   ];
+
+  // Add Owner Dashboard if user is an owner
+  if (user?.role === 'owner' || user?.role === 'RESTAURANT_OWNER') {
+    navItems.push({ name: "Gestione", path: "/owner/dashboard", icon: <LayoutDashboard size={24} /> });
+  } 
+  // Add Admin Dashboard if user is an admin
+  else if (user?.role === 'admin') {
+    navItems.push({ name: "Admin", path: "/admin/dashboard", icon: <ShieldCheck size={24} /> });
+  }
+
+  // Common items
+  navItems.push({ name: "Preferiti", path: "/favorites", icon: <Heart size={24} /> });
+  navItems.push({ name: "Profilo", path: "/profile", icon: <User size={24} /> });
 
   return (
     <div style={{
@@ -39,9 +57,10 @@ export default function BottomNav() {
               alignItems: 'center', 
               justifyContent: 'center',
               textDecoration: 'none',
-              padding: '12px 10px 8px',
+              padding: '12px 6px 8px',
               color: isActive ? 'var(--primary)' : 'var(--text-muted)',
-              flex: 1
+              flex: 1,
+              minWidth: 0 // Prevent text overflow
             }}
           >
             <div style={{ 
@@ -52,9 +71,14 @@ export default function BottomNav() {
               {item.icon}
             </div>
             <span style={{ 
-              fontSize: '0.65rem', 
+              fontSize: '0.62rem', 
               fontWeight: isActive ? 800 : 600,
-              letterSpacing: '0.02em'
+              letterSpacing: '0.01em',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              width: '100%',
+              textAlign: 'center'
             }}>
               {item.name}
             </span>

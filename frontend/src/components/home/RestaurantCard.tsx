@@ -1,7 +1,22 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { MapPin, Clock, Star, Navigation } from "lucide-react";
-import { getRestaurantStatus } from "../../utils/isOpenNow";
+import { MapPin, Star, Navigation } from "lucide-react";
+import { getRestaurantStatusDetailed } from "../../utils/isOpenNow";
+
+export const CUISINE_FLAGS: Record<string, string> = {
+  "messico": "🇲🇽",
+  "argentina": "🇦🇷",
+  "brasile": "🇧🇷",
+  "colombia": "🇨🇴",
+  "perù": "🇵🇪",
+  "venezuela": "🇻🇪",
+  "cile": "🇨🇱",
+  "ecuador": "🇪🇨",
+  "bolivia": "🇧🇴",
+  "cuba": "🇨🇺",
+  "spagna": "🇪🇸",
+  "italia": "🇮🇹"
+};
 
 interface RestaurantCardProps {
   restaurant: {
@@ -17,11 +32,15 @@ interface RestaurantCardProps {
     reviewsCount?: number;
     averageRating?: number;
     cuisineType?: string | null;
-  };
+    matchedItem?: {
+      name: string;
+      price: number | null;
+    } | null;
+  }
 }
 
 export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
-  const status = getRestaurantStatus(restaurant.openingHours);
+  const statusDetailed = getRestaurantStatusDetailed(restaurant.openingHours);
   
   return (
     <motion.div
@@ -58,12 +77,12 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
               borderRadius: '12px', 
               fontSize: '0.75rem', 
               fontWeight: 800,
-              background: status === 'OPEN' ? 'rgba(16, 185, 129, 0.95)' : 'rgba(100, 116, 139, 0.9)',
+              background: statusDetailed.status === 'OPEN' ? 'rgba(16, 185, 129, 0.95)' : 'rgba(100, 116, 139, 0.9)',
               color: 'white',
               backdropFilter: 'blur(4px)',
               boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
             }}>
-              {status === 'OPEN' ? 'APERTO' : 'CHIUSO'}
+              {statusDetailed.text.toUpperCase()}
             </span>
           </div>
           
@@ -104,7 +123,7 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
             {restaurant.cuisineType && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f1f5f9', padding: '4px 8px', borderRadius: '8px' }}>
                 <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', textTransform: 'capitalize' }}>
-                  {restaurant.cuisineType}
+                  {CUISINE_FLAGS[restaurant.cuisineType.toLowerCase()] || ''} {restaurant.cuisineType}
                 </span>
               </div>
             )}
@@ -130,18 +149,51 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
             borderTop: '1px solid var(--border)',
             display: 'flex', 
             alignItems: 'center', 
-            justifyContent: 'space-between'
+            justifyContent: 'space-between',
+            gap: 12
           }}>
-            {restaurant.distance != null && (
+            {restaurant.matchedItem ? (
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                fontSize: '0.8rem', 
+                color: '#1e293b', 
+                fontWeight: 600, 
+                background: '#f1f5f9', 
+                padding: '6px 12px', 
+                borderRadius: '10px',
+                border: '1px solid #e2e8f0',
+                flex: 1,
+                overflow: 'hidden'
+              }}>
+                <span style={{ opacity: 0.6 }}>📖</span>
+                <span style={{ 
+                  whiteSpace: 'nowrap', 
+                  overflow: 'hidden', 
+                  textOverflow: 'ellipsis' 
+                }}>
+                  {restaurant.matchedItem.name}
+                </span>
+                {restaurant.matchedItem.price != null && (
+                  <span style={{ color: 'var(--primary)', fontWeight: 800, marginLeft: 'auto' }}>
+                    {restaurant.matchedItem.price}€
+                  </span>
+                )}
+              </div>
+            ) : restaurant.distance != null && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 800, background: '#fff7ed', padding: '6px 12px', borderRadius: '12px' }}>
                 <Navigation size={14} />
                 <span>{restaurant.distance.toFixed(1)} km</span>
               </div>
             )}
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Clock size={14} />
-              Presto
-            </span>
+
+            {restaurant.matchedItem && restaurant.distance != null && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                <Navigation size={12} />
+                <span>{restaurant.distance.toFixed(1)}km</span>
+              </div>
+            )}
           </div>
         </div>
       </Link>

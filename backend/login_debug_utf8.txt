@@ -1,3 +1,0 @@
-﻿--- LOGIN DEBUG START ---
-Searching for user with email: test@example.com
---- LOGIN DEBUG END ---

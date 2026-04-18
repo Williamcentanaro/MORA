@@ -40,7 +40,7 @@ const SplashScreen: React.FC = () => {
             textShadow: '0 10px 30px rgba(0,0,0,0.1)'
           }}
         >
-          Sabor Latino
+          MORA
         </motion.h1>
         <motion.p
           initial={{ opacity: 0 }}

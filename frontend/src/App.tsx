@@ -1,14 +1,22 @@
 import { useEffect, useState } from "react";
 import { Routes, Route, Link } from "react-router-dom";
+import { LogOut, LayoutDashboard } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import RestaurantDetailPage from "./pages/RestaurantDetailPage";
+import RestaurantMenuPage from "./pages/RestaurantMenuPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import PartnerApplyPage from "./pages/PartnerApplyPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import OwnerRestaurantManager from "./pages/OwnerRestaurantManager";
+import FavoritesPage from "./pages/FavoritesPage";
 import ProfilePage from "./pages/ProfilePage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 import { Toaster } from "react-hot-toast";
 import NotificationBell from "./components/NotificationBell";
 import PWAInstallPrompt from "./components/common/PWAInstallPrompt";
@@ -33,6 +41,23 @@ function App() {
   }, []);
 
   useEffect(() => {
+    // Intercept token from URL (Classic OAuth redirect flow)
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('token');
+    
+    if (urlToken) {
+      console.log("[AUTH-LOG] Token captured from URL");
+      localStorage.setItem('auth_token', urlToken);
+      
+      // Clean up URL to hide token
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+      
+      // Force App to re-load user
+      setToken(urlToken);
+      window.dispatchEvent(new Event('auth-change'));
+    }
+
     const handleAuthChange = () => {
       setToken(localStorage.getItem('auth_token'));
     };
@@ -98,11 +123,32 @@ function App() {
                 Accedi
               </Link>
             ) : (
-              <Link to="/profile">
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
-                  {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-                </div>
-              </Link>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {(user?.role === 'owner' || user?.role === 'RESTAURANT_OWNER') && (
+                  <Link to="/owner/dashboard" style={{
+                    display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 800, color: 'white', background: 'var(--primary)', border: 'none', padding: '6px 12px', borderRadius: '12px', textDecoration: 'none', cursor: 'pointer'
+                  }}>
+                    <LayoutDashboard size={14} />
+                    Owner
+                  </Link>
+                )}
+                
+                <Link to="/profile">
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
+                    {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                </Link>
+
+                <button 
+                  onClick={() => {
+                     localStorage.removeItem('auth_token');
+                     window.location.href = '/login';
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 700, color: '#ef4444', background: '#fef2f2', border: '1px solid #fecaca', padding: '6px 12px', borderRadius: '12px', cursor: 'pointer' }}>
+                  <LogOut size={14} />
+                  Esci
+                </button>
+              </div>
             )}
           </nav>
         </div>
@@ -113,10 +159,16 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/restaurants/:id" element={<RestaurantDetailPage />} />
+          <Route path="/restaurants/:id/menu" element={<RestaurantMenuPage />} />
           <Route path="/events" element={<EventsPage />} />
-          <Route path="/favorites" element={<ProfilePage />} /> {/* Fallback for now */}
+          <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
           <Route path="/partner/apply" element={<PartnerApplyPage />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/owner/dashboard" element={<OwnerDashboard />} />
@@ -125,7 +177,7 @@ function App() {
         </Routes>
       </main>
 
-      <BottomNav />
+      <BottomNav user={user} />
 
       <Toaster position="bottom-right" toastOptions={{
         style: {

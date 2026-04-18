@@ -1,3 +1,0 @@
-src/controllers/restaurantController.ts(100,9): error TS1472: 'catch' or 'finally' expected.
-src/controllers/restaurantController.ts(109,7): error TS1005: ',' expected.
-src/controllers/restaurantController.ts(113,1): error TS1128: Declaration or statement expected.

@@ -1,8 +1,8 @@
-import type { NextFunction } from "express";
-import type { Response } from "express";
+import type { NextFunction, Response } from "express";
 import prisma from "../config/prisma";
 import type { AuthRequest } from "../middleware/auth";
 import { notifyFollowers } from "../utils/pushNotifier";
+import { flattenMenus } from "../utils/menuMapper";
 
 export const getMyRestaurants = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -37,6 +37,7 @@ export const getMyRestaurants = async (req: AuthRequest, res: Response, next: Ne
                             lt: tomorrow
                         }
                     },
+                    include: { items: true },
                     take: 1
                 }
             }
@@ -46,6 +47,7 @@ export const getMyRestaurants = async (req: AuthRequest, res: Response, next: Ne
             ...r,
             followerCount: r._count.followers,
             eventCount: r._count.events,
+            menus: flattenMenus(r.menus),
             hasTodayMenu: r.menus.length > 0
         }));
 
@@ -70,7 +72,7 @@ export const getOwnerRestaurant = async (req: AuthRequest, res: Response, next: 
             where: { id: id as string },
             include: {
                 openingHours: true,
-                menus: true,
+                menus: { include: { items: true } },
                 events: true
             }
         });
@@ -85,7 +87,10 @@ export const getOwnerRestaurant = async (req: AuthRequest, res: Response, next: 
             return;
         }
 
-        res.json(restaurant);
+        res.json({
+            ...restaurant,
+            menus: flattenMenus(restaurant.menus)
+        });
     } catch (error) {
         console.error("Error fetching restaurant:", error);
         res.status(500).json({ message: "Error fetching restaurant", error });
@@ -96,7 +101,7 @@ export const updateRestaurantInfo = async (req: AuthRequest, res: Response, next
     try {
         const ownerId = req.user?.id;
         const { id } = req.params;
-        const { name, description, address, city, coverImage, cuisineType } = req.body;
+        const { name, description, address, city, coverImage, cuisineType, latitude, longitude, gallery } = req.body;
 
         if (!ownerId) {
             res.status(401).json({ message: "Unauthorized" });
@@ -120,7 +125,10 @@ export const updateRestaurantInfo = async (req: AuthRequest, res: Response, next
                 address,
                 city,
                 coverImage,
-                cuisineType: cuisineType || undefined
+                gallery: gallery || undefined,
+                cuisineType: cuisineType || undefined,
+                latitude: (latitude && latitude !== "") ? parseFloat(latitude).toString() : undefined,
+                longitude: (longitude && longitude !== "") ? parseFloat(longitude).toString() : undefined
             }
         });
 
@@ -245,17 +253,27 @@ export const updateRestaurantMenus = async (req: AuthRequest, res: Response, nex
 
         // 2. Create new items
         if (menus && Array.isArray(menus) && menus.length > 0) {
-            await prisma.menu.createMany({
-                data: menus.map((menu: any) => ({
-                    title: menu.title,
-                    description: menu.description,
-                    price: menu.price ? parseFloat(menu.price) : null,
+            // Create a single "Parent" menu record for this batch
+            const menuParent = await prisma.menu.create({
+                data: {
+                    title: updateType === "REGULAR" ? "Menu Principale" : "Specialità del Giorno",
+                    description: updateType === "REGULAR" ? "I nostri piatti classici" : "Selezione giornaliera dello chef",
                     type: updateType,
                     date: (updateType === "DAILY" && updateDate) ? updateDate : null,
-                    content: menu.content || {},
-                    isActive: menu.isActive !== false,
-                    restaurantId: id as string
-                }))
+                    content: {}, // Legacy field, keeping empty for now
+                    isActive: true,
+                    restaurantId: id as string,
+                    items: {
+                        create: menus.map((m: any) => ({
+                            name: m.title,
+                            description: m.description,
+                            price: m.price ? parseFloat(m.price) : null,
+                            category: m.category,
+                            currency: "EUR",
+                            availability: true
+                        }))
+                    }
+                }
             });
         }
 

@@ -1,54 +1,35 @@
 import { useState, useEffect } from 'react';
 import { Download, Share } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePWA } from '../../hooks/usePWA';
 
 export default function PWAInstallPrompt() {
+  const { isInstallable, isInstalled, platform, install } = usePWA();
   const [showPrompt, setShowPrompt] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [platform, setPlatform] = useState<'android' | 'ios' | 'other'>('other');
 
   useEffect(() => {
-    // Detect platform
-    const ua = window.navigator.userAgent.toLowerCase();
-    const isIos = /iphone|ipad|ipod/.test(ua);
-    const isAndroid = /android/.test(ua);
-    setPlatform(isIos ? 'ios' : (isAndroid ? 'android' : 'other'));
-
-    // Handle Android/Chrome beforeinstallprompt
-    const handleBeforeInstallPrompt = (e: any) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      
-      // Only show if not already dismissed in this session
-      const dismissed = sessionStorage.getItem('pwa_prompt_dismissed');
-      if (!dismissed) {
-        setShowPrompt(true);
-      }
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    // For iOS, show if not standalone and not dismissed
-    if (isIos && !(window.navigator as any).standalone) {
-      const dismissed = sessionStorage.getItem('pwa_prompt_dismissed');
-      if (!dismissed) {
-        setShowPrompt(true);
-      }
+    if (isInstalled) {
+      setShowPrompt(false);
+      return;
     }
 
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
-  }, []);
+    const dismissed = sessionStorage.getItem('pwa_prompt_dismissed');
+    
+    // For iOS, show if not installed and not dismissed
+    if (platform === 'ios' && !isInstalled && !dismissed) {
+      setShowPrompt(true);
+    }
+    
+    // For Android/Others, show if installable and not dismissed
+    if (isInstallable && !dismissed) {
+      setShowPrompt(true);
+    }
+  }, [isInstallable, isInstalled, platform]);
 
   const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setShowPrompt(false);
-      }
-      setDeferredPrompt(null);
+    const success = await install();
+    if (success) {
+      setShowPrompt(false);
     }
   };
 

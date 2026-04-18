@@ -253,3 +253,4 @@ input:focus, textarea:focus {
     gap: 20px !important;
   }
 }
+.hide-scrollbar::-webkit-scrollbar { display: none; }

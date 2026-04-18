@@ -22,7 +22,10 @@ app.use((req, res, next) => {
   console.log(`[REQ] ${req.method} ${req.originalUrl}`);
   next();
 });
-app.use(helmet());
+app.use(helmet({
+  crossOriginOpenerPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms'));
 
 // CORS Hardening

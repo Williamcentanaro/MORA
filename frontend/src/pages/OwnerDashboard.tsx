@@ -229,6 +229,38 @@ function OwnerDashboard() {
     }, 400));
   };
 
+  const verifyAddress = async () => {
+    if (!formData.city || !formData.streetName) {
+      setError("Inserisci almeno città e via per verificare l'indirizzo.");
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+    setMsg("");
+
+    try {
+      const q = `${formData.streetName} ${formData.streetNumber}, ${formData.city}, ${formData.country}`;
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`);
+      const data = await res.json();
+
+      if (data && data.length > 0) {
+        setFormData({
+            ...formData,
+            latitude: data[0].lat,
+            longitude: data[0].lon
+        });
+        setMsg("📍 Indirizzo verificato e posizionato sulla mappa!");
+      } else {
+        setError("Impossibile trovare l'indirizzo esatto. Prova a selezionarlo manualmente sulla mappa o controlla se ci sono errori di battitura.");
+      }
+    } catch (err) {
+      setError("Errore durante la verifica dell'indirizzo. Riprova più tardi.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleStreetChange = (val: string) => {
     setFormData({ ...formData, streetName: val });
     if (activeTimeout) clearTimeout(activeTimeout);
@@ -239,8 +271,15 @@ function OwnerDashboard() {
     }, 400));
   };
 
-  const selectCity = (s: any) => {
-    setFormData({ ...formData, city: s.name || s.display_name.split(',')[0] });
+  const selectCity = async (s: any) => {
+    const lat = s.lat;
+    const lon = s.lon;
+    setFormData({ 
+        ...formData, 
+        city: s.name || s.display_name.split(',')[0],
+        latitude: lat || formData.latitude,
+        longitude: lon || formData.longitude
+    });
     setCitySuggestions(null);
   };
 
@@ -461,21 +500,21 @@ function OwnerDashboard() {
                 <form onSubmit={handleCreateRestaurant}>
                   {activeStep === 1 && (
                     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <label style={{ fontWeight: 800, fontSize: "0.85rem", color: '#64748b', textTransform: 'uppercase' }}>Nome Locale</label>
-                        <input required type="text" placeholder="Es. Osteria del Mare" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} style={{ padding: '16px', borderRadius: '14px' }} />
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        <label style={{ fontWeight: 800, fontSize: "1rem", color: '#334155', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Nome Locale</label>
+                        <input required type="text" placeholder="Es. Osteria del Mare" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} style={{ padding: '18px 20px', borderRadius: '16px', fontSize: '1.05rem', border: '2px solid #e2e8f0' }} />
                       </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <label style={{ fontWeight: 800, fontSize: "0.85rem", color: '#64748b', textTransform: 'uppercase' }}>Descrizione</label>
-                        <textarea rows={3} placeholder="Racconta la storia del tuo ristorante..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} style={{ padding: '16px', borderRadius: '14px', resize: 'vertical' }} />
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        <label style={{ fontWeight: 800, fontSize: "1rem", color: '#334155', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Descrizione</label>
+                        <textarea rows={3} placeholder="Racconta la storia del tuo ristorante..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} style={{ padding: '18px 20px', borderRadius: '16px', resize: 'vertical', fontSize: '1.05rem', border: '2px solid #e2e8f0' }} />
                       </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <label style={{ fontWeight: 800, fontSize: "0.85rem", color: '#64748b', textTransform: 'uppercase' }}>Cucina / Nazionalità</label>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        <label style={{ fontWeight: 800, fontSize: "1rem", color: '#334155', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Cucina / Nazionalità</label>
                         <select 
                           required 
                           value={formData.cuisineType} 
                           onChange={e => setFormData({...formData, cuisineType: e.target.value})} 
-                          style={{ padding: '16px', borderRadius: '14px', background: '#fff', border: '1px solid #e2e8f0' }}
+                          style={{ padding: '18px 20px', borderRadius: '16px', background: '#fff', border: '2px solid #e2e8f0', fontSize: '1.05rem' }}
                         >
                           <option value="">Seleziona una cucina...</option>
                           <option value="Peruvian">Peruviana 🇵🇪</option>
@@ -498,10 +537,10 @@ function OwnerDashboard() {
 
                   {activeStep === 2 && (
                     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8, position: 'relative' }}>
-                          <label style={{ fontWeight: 800, fontSize: "0.85rem", color: '#64748b', textTransform: 'uppercase' }}>Città</label>
-                          <input required type="text" value={formData.city} onChange={e => handleCityChange(e.target.value)} onFocus={() => setStreetSuggestions(null)} onBlur={() => setTimeout(() => setCitySuggestions(null), 200)} style={{ padding: '16px', borderRadius: '14px' }} />
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10, position: 'relative' }}>
+                          <label style={{ fontWeight: 800, fontSize: "1rem", color: '#334155', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Città</label>
+                          <input required type="text" placeholder="Es. Roma" value={formData.city} onChange={e => handleCityChange(e.target.value)} onFocus={() => setStreetSuggestions(null)} onBlur={() => setTimeout(() => setCitySuggestions(null), 200)} style={{ padding: '18px 20px', borderRadius: '16px', fontSize: '1.05rem', border: '2px solid #e2e8f0' }} />
                           {citySuggestions && (
                             <div className="glass" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 2000, borderRadius: '12px', marginTop: '4px', maxHeight: '200px', overflowY: 'auto', border: '1px solid #e2e8f0', background: 'white' }}>
                               {citySuggestions.map((s, i) => (
@@ -510,24 +549,64 @@ function OwnerDashboard() {
                             </div>
                           )}
                         </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8, position: 'relative' }}>
-                          <label style={{ fontWeight: 800, fontSize: "0.85rem", color: '#64748b', textTransform: 'uppercase' }}>Via</label>
-                          <input required type="text" value={formData.streetName} onChange={e => handleStreetChange(e.target.value)} onBlur={() => setTimeout(() => setStreetSuggestions(null), 200)} style={{ padding: '16px', borderRadius: '14px' }} />
-                          {streetSuggestions && (
-                            <div className="glass" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 2000, borderRadius: '12px', marginTop: '4px', background: 'white' }}>
-                              {streetSuggestions.map((s, i) => (
-                                <div key={i} onClick={() => selectStreet(s)} style={{ padding: '12px', cursor: 'pointer' }}>{s.display_name}</div>
-                              ))}
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, gridColumn: 'span 1' }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 10, position: 'relative' }}>
+                              <label style={{ fontWeight: 800, fontSize: "1rem", color: '#334155', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Via</label>
+                              <input required type="text" placeholder="Es. Via Roma" value={formData.streetName} onChange={e => handleStreetChange(e.target.value)} onBlur={() => setTimeout(() => setStreetSuggestions(null), 200)} style={{ padding: '18px 20px', borderRadius: '16px', fontSize: '1.05rem', border: '2px solid #e2e8f0' }} />
+                              {streetSuggestions && (
+                                <div className="glass" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 2000, borderRadius: '12px', marginTop: '4px', background: 'white' }}>
+                                  {streetSuggestions.map((s, i) => (
+                                    <div key={i} onClick={() => selectStreet(s)} style={{ padding: '12px', cursor: 'pointer' }}>{s.display_name}</div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          <label style={{ fontWeight: 800, fontSize: "0.85rem", color: '#64748b', textTransform: 'uppercase' }}>N° Civico</label>
-                          <input required type="text" value={formData.streetNumber} onChange={e => setFormData({...formData, streetNumber: e.target.value})} onBlur={handleHouseNumberBlur} style={{ padding: '16px', borderRadius: '14px' }} />
+                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                              <label style={{ fontWeight: 800, fontSize: "1rem", color: '#334155', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Civico</label>
+                              <input required type="text" placeholder="10" value={formData.streetNumber} onChange={e => setFormData({...formData, streetNumber: e.target.value})} onBlur={handleHouseNumberBlur} style={{ padding: '18px 20px', borderRadius: '16px', fontSize: '1.05rem', border: '2px solid #e2e8f0', textAlign: 'center' }} />
+                            </div>
                         </div>
                       </div>
 
-                      <div style={{ height: '300px', borderRadius: '16px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '8px' }}>
+                        <motion.button 
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            type="button" 
+                            onClick={verifyAddress} 
+                            style={{ 
+                                background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', 
+                                color: 'white', 
+                                borderRadius: '14px', 
+                                fontSize: '0.95rem', 
+                                fontWeight: 800,
+                                padding: '14px 32px',
+                                border: 'none',
+                                boxShadow: '0 4px 6px -1px rgba(37,99,235,0.2)',
+                                cursor: 'pointer',
+                                width: '100%',
+                                maxWidth: '300px'
+                            }}
+                        >
+                            🔍 Verifica Indirizzo
+                        </motion.button>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ 
+                            width: 12, 
+                            height: 12, 
+                            borderRadius: '50%', 
+                            background: formData.latitude ? '#10b981' : '#f59e0b'
+                        }} />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: formData.latitude ? '#10b981' : '#f59e0b' }}>
+                            {formData.latitude ? "Posizione Verificata" : "Posizione non ancora confermata"}
+                        </span>
+                        {!formData.latitude && <span style={{ fontSize: '0.8rem', color: '#64748b' }}>(Clicca 'Verifica' o usa la mappa)</span>}
+                      </div>
+
+                      <div style={{ height: '300px', borderRadius: '16px', overflow: 'hidden', border: '2px solid', borderColor: formData.latitude ? '#10b981' : '#e2e8f0' }}>
                         <MapContainer center={mapCenter} zoom={formData.latitude ? 15 : 5} style={{ height: '100%', width: '100%' }}>
                           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                           <MapController center={mapCenter} />

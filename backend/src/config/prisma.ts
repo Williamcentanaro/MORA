@@ -1,14 +1,22 @@
 import { PrismaClient } from '@prisma/client';
-import { PrismaBetterSQLite3 } from '@prisma/adapter-better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 
-// Fix for ESM: Use process.cwd() instead of __dirname
-const dbPath = path.resolve(process.cwd(), 'prisma/dev.db');
+const logPath = path.resolve(process.cwd(), 'prisma-debug.log');
+const log = (msg: string) => {
+    const entry = `${new Date().toISOString()} - ${msg}\n`;
+    console.log(`[PRISMA-DEBUG] ${msg}`);
+    try {
+        fs.appendFileSync(logPath, entry);
+    } catch (e) {}
+};
 
-const adapter = new PrismaBetterSQLite3({
-    url: `file:${dbPath}`,
-});
+log("Initializing Prisma Client...");
 
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
+
+prisma.$connect()
+    .then(() => log("Successfully connected to database"))
+    .catch((err) => log(`Connection error: ${err.stack || err.message}`));
 
 export default prisma;

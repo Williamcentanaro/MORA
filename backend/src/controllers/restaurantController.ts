@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import prisma from "../config/prisma";
+import { flattenMenus } from "../utils/menuMapper";
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 
@@ -9,41 +10,151 @@ export const getRestaurants = async (req: Request, res: Response, next: NextFunc
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 20;
         const skip = (page - 1) * limit;
+        const search = req.query.search as string;
+        const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice as string) : null;
+
+        const where: any = { status: "APPROVED" };
+
+        if (search || maxPrice) {
+            const searchOr: any[] = [];
+            if (search) {
+                searchOr.push(
+                    { name: { contains: search } },
+                    { description: { contains: search } },
+                    { address: { contains: search } },
+                    { city: { contains: search } },
+                    { cuisineType: { contains: search } }
+                );
+            }
+
+            // Search in menus (title or items)
+            searchOr.push({
+                menus: {
+                    some: {
+                        OR: [
+                            // Match Menu title + price
+                            {
+                                AND: [
+                                    search ? { title: { contains: search } } : {},
+                                    maxPrice ? { price: { lte: maxPrice } } : {}
+                                ]
+                            },
+                            // Match MenuItems + price
+                            {
+                                items: {
+                                    some: {
+                                        AND: [
+                                            search ? {
+                                                OR: [
+                                                    { name: { contains: search } },
+                                                    { description: { contains: search } }
+                                                ]
+                                            } : {},
+                                            maxPrice ? { price: { lte: maxPrice } } : {}
+                                        ]
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            });
+
+            where.OR = searchOr;
+        }
+
+        const include: any = {
+            openingHours: true,
+            reviews: {
+                select: { rating: true }
+            }
+        };
+
+        // Extraction logic for explainability
+        if (search || maxPrice) {
+            include.menus = {
+                where: {
+                    OR: [
+                        {
+                            AND: [
+                                search ? { title: { contains: search } } : {},
+                                maxPrice ? { price: { lte: maxPrice } } : {}
+                            ]
+                        },
+                        {
+                            items: {
+                                some: {
+                                    AND: [
+                                        search ? {
+                                            OR: [
+                                                { name: { contains: search } },
+                                                { description: { contains: search } }
+                                            ]
+                                        } : {},
+                                        maxPrice ? { price: { lte: maxPrice } } : {}
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                },
+                include: {
+                    items: {
+                        where: {
+                            AND: [
+                                search ? {
+                                    OR: [
+                                        { name: { contains: search } },
+                                        { description: { contains: search } }
+                                    ]
+                                } : {},
+                                maxPrice ? { price: { lte: maxPrice } } : {}
+                            ]
+                        },
+                        take: 1
+                    }
+                },
+                take: 1
+            };
+        }
 
         const restaurants = await prisma.restaurant.findMany({
-            where: { status: "APPROVED" },
-            select: {
-                id: true,
-                name: true,
-                description: true,
-                address: true,
-                city: true,
-                phone: true,
-                latitude: true,
-                longitude: true,
-                logo: true, // Only use lightweight logo for lists
-                status: true,
-                cuisineType: true,
-                openingHours: true,
-                reviews: {
-                   select: { rating: true }
-                }
-            },
+            where,
+            include,
             skip,
             take: limit
         });
         
-        // Calcola average rating per ogni ristorante
         const formattedRestaurants = restaurants.map((r: any) => {
             const reviewsArr = r.reviews || [];
-            const totalReviews = reviewsArr.length;
-            const sumRatings = reviewsArr.reduce((acc: number, curr: any) => acc + curr.rating, 0);
-            const averageRating = totalReviews > 0 ? (sumRatings / totalReviews) : 0;
-            const { reviews, ...rest } = r;
+            const averageRating = reviewsArr.length > 0 
+                ? (reviewsArr.reduce((acc: number, curr: any) => acc + curr.rating, 0) / reviewsArr.length) 
+                : 0;
+            
+            let matchedItem = null;
+            if (r.menus && r.menus.length > 0) {
+                const menu = r.menus[0];
+                // Priority to MenuItem if exists and matches
+                if (menu.items && menu.items.length > 0) {
+                    matchedItem = {
+                        name: menu.items[0].name,
+                        price: menu.items[0].price
+                    };
+                } else {
+                    // Fallback to Menu title (legacy or simple menu)
+                    matchedItem = {
+                        name: menu.title,
+                        price: menu.price
+                    };
+                }
+            }
+
+            const { reviews, menus, ...rest } = r;
             return {
                 ...rest,
-                reviewsCount: totalReviews,
-                averageRating
+                reviewsCount: reviewsArr.length,
+                averageRating,
+                matchedItem
             };
         });
 
@@ -57,23 +168,32 @@ export const getRestaurants = async (req: Request, res: Response, next: NextFunc
 export const getRestaurantById = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
+        console.log(`[GET /api/restaurants/${id}] Fetching detail...`);
+        
         const restaurant = await prisma.restaurant.findUnique({
             where: { id: id as string },
             include: {
                 openingHours: true,
-                menus: true,
+                menus: { 
+                    include: { items: true },
+                    orderBy: { createdAt: 'desc' }
+                },
                 events: true,
                 reviews: {
                     include: {
                         user: { select: { name: true } }
                     },
-                    orderBy: { createdAt: 'desc' }
+                    orderBy: { updatedAt: 'desc' }
+                },
+                _count: {
+                    select: { followers: true }
                 }
             }
         });
 
         if (!restaurant) {
-            res.status(404).json({ message: "Restaurant not found" });
+            console.warn(`[GET /api/restaurants/${id}] Not found in DB`);
+            res.status(404).json({ message: "Ristorante non trovato" });
             return;
         }
 
@@ -87,29 +207,41 @@ export const getRestaurantById = async (req: Request, res: Response, next: NextF
                     const decoded = jwt.verify(token as string, JWT_SECRET as string) as any;
                     user = { id: decoded.id || decoded.userId, role: decoded.role };
                 } catch (e) {
-                    // Ignore token errors here, just treat as unauthenticated
+                    // Ignore token errors
                 }
             }
 
             if (!user || (user.role !== "ADMIN" && user.id !== restaurant.ownerId)) {
-                res.status(404).json({ message: "Restaurant not found" });
+                console.warn(`[GET /api/restaurants/${id}] Forbidden (Status: ${restaurant.status})`);
+                res.status(404).json({ message: "Ristorante non trovato" });
                 return;
             }
         }
 
         const reviewsArr = restaurant.reviews || [];
         const totalReviews = reviewsArr.length;
-        const sumRatings = reviewsArr.reduce((acc: number, curr: any) => acc + curr.rating, 0);
+        const sumRatings = reviewsArr.reduce((acc: number, curr: any) => acc + (curr.rating || 0), 0);
         const averageRating = totalReviews > 0 ? (sumRatings / totalReviews) : 0;
         
+        console.log(`[GET /api/restaurants/${id}] Success, sending response`);
+        
+        // Clean restaurant object for JSON to avoid circularity if any
+        const { reviews, menus, ...restaurantData } = restaurant;
+
         res.json({
-            ...restaurant,
+            ...restaurantData,
             reviewsCount: totalReviews,
-            averageRating
+            averageRating,
+            followerCount: (restaurant as any)._count?.followers || 0,
+            reviews: reviewsArr,
+            menus: flattenMenus(menus || [])
         });
     } catch (error) {
-        console.error("Error fetching restaurant:", error);
-        res.status(500).json({ message: "Error fetching restaurant", error });
+        console.error(`[GET /api/restaurants/${req.params.id}] CRASH:`, error);
+        res.status(500).json({ 
+            message: "Errore durante il caricamento del ristorante", 
+            error: process.env.NODE_ENV === 'development' ? error : undefined 
+        });
     }
 };
 
@@ -173,6 +305,21 @@ export const followRestaurant = async (req: any, res: Response, next: NextFuncti
 
         if (!userId) {
             res.status(401).json({ message: "Unauthorized" });
+            return;
+        }
+
+        // Idempotency check: don't crash if already following
+        const existing = await prisma.follower.findUnique({
+            where: {
+                userId_restaurantId: {
+                    userId,
+                    restaurantId,
+                },
+            },
+        });
+
+        if (existing) {
+            res.json(existing);
             return;
         }
 
@@ -337,6 +484,7 @@ export const getTodayMenu = async (req: Request, res: Response, next: NextFuncti
                 },
                 isActive: true,
             },
+            include: { items: true }
         });
 
         if (!menu) {
@@ -344,7 +492,7 @@ export const getTodayMenu = async (req: Request, res: Response, next: NextFuncti
             return;
         }
 
-        res.json(menu);
+        res.json(flattenMenus([menu]));
     } catch (error) {
         console.error("Error fetching today's menu:", error);
         res.status(500).json({ message: "Error fetching today's menu", error });
@@ -356,10 +504,11 @@ export const getRestaurantMenus = async (req: Request, res: Response, next: Next
         const { id: restaurantId } = req.params;
         const menus = await prisma.menu.findMany({
             where: { restaurantId: restaurantId as string },
+            include: { items: true },
             orderBy: { createdAt: "desc" },
         });
 
-        res.json(menus);
+        res.json(flattenMenus(menus));
     } catch (error) {
         console.error("Error fetching menus:", error);
         res.status(500).json({ message: "Error fetching menus", error });
@@ -391,7 +540,8 @@ export const createOrUpdateRestaurantReview = async (req: any, res: Response, ne
             },
             update: {
                 rating,
-                comment
+                comment,
+                updatedAt: new Date() // Force timestamp update
             },
             create: {
                 rating,
@@ -405,5 +555,31 @@ export const createOrUpdateRestaurantReview = async (req: any, res: Response, ne
     } catch (error) {
         console.error("Error creating/updating review:", error);
         res.status(500).json({ message: "Error with review", error });
+    }
+};
+
+export const deleteReview = async (req: any, res: Response, next: NextFunction) => {
+    try {
+        const { id: restaurantId } = req.params;
+        const userId = req.user?.id;
+
+        if (!userId) {
+            res.status(401).json({ message: "Unauthorized" });
+            return;
+        }
+
+        await prisma.review.delete({
+            where: {
+                userId_restaurantId: {
+                    userId,
+                    restaurantId
+                }
+            }
+        });
+
+        res.status(200).json({ message: "Recensione eliminata con successo" });
+    } catch (error) {
+        console.error("Error deleting review:", error);
+        res.status(500).json({ message: "Errore durante l'eliminazione della recensione", error });
     }
 };

@@ -32,6 +32,7 @@ type Restaurant = {
 interface MapComponentProps {
     restaurants: Restaurant[];
     userLocation?: { latitude: number; longitude: number; timestamp?: number } | null;
+    fullHeight?: boolean;
 }
 
 // Custom Pulsing User Icon
@@ -107,6 +108,13 @@ const restaurantIcon = L.divIcon({
 function MapController({ center, zoom, timestamp }: { center: [number, number], zoom: number, timestamp?: number }) {
     const map = useMap();
     
+    useEffect(() => {
+        // Essential for React-Leaflet to calculate container size correctly on mount/resize
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 100);
+    }, [map]);
+
     const { latitude, longitude } = center ? { latitude: center[0], longitude: center[1] } : { latitude: 0, longitude: 0 };
 
     useEffect(() => {
@@ -121,7 +129,7 @@ function MapController({ center, zoom, timestamp }: { center: [number, number], 
     return null;
 }
 
-const MapComponent = ({ restaurants, userLocation }: MapComponentProps) => {
+const MapComponent = ({ restaurants, userLocation, fullHeight = false }: MapComponentProps) => {
     // Initial center: if user available, fly there. Otherwise center of Italy
     const position: [number, number] = userLocation 
         ? [userLocation.latitude, userLocation.longitude] 
@@ -130,7 +138,7 @@ const MapComponent = ({ restaurants, userLocation }: MapComponentProps) => {
     const zoom = userLocation ? 16 : 5;
 
     return (
-        <div style={{ height: '500px', width: '100%', borderRadius: '24px', overflow: 'hidden', border: 'none' }}>
+        <div style={{ height: fullHeight ? '100%' : '500px', width: '100%', borderRadius: fullHeight ? '0' : '24px', overflow: 'hidden', border: 'none' }}>
             <MapContainer 
                 center={position} 
                 zoom={zoom} 

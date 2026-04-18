@@ -11,7 +11,9 @@ import {
     getRestaurantMenus,
     getFollowedRestaurants,
     createOrUpdateRestaurantReview,
+    deleteReview
 } from "../controllers/restaurantController";
+import { createReservation } from "../controllers/reservationController";
 import { authenticate } from "../middleware/auth";
 import { validate } from "../middleware/validate";
 import { createRestaurantSchema, createMenuSchema } from "../schemas";
@@ -25,6 +27,7 @@ router.get("/", getRestaurants);
 
 // Reviews
 router.post("/:id/reviews", authenticate, createOrUpdateRestaurantReview);
+router.delete("/:id/reviews", authenticate, deleteReview);
 
 router.get("/:id", getRestaurantById);
 router.post("/", authenticate, validate(createRestaurantSchema), createRestaurant);
@@ -32,11 +35,14 @@ router.post("/", authenticate, validate(createRestaurantSchema), createRestauran
 // Other Follow actions
 router.post("/:id/follow", authenticate, followRestaurant);
 router.delete("/:id/follow", authenticate, unfollowRestaurant);
-router.get("/:id/follow-status", authenticate, getFollowStatus);
+router.get("/:id/follow/status", authenticate, getFollowStatus);
 
 // Menu system
 router.post("/:id/menu", authenticate, validate(createMenuSchema), createMenu);
 router.get("/:id/menu/today", getTodayMenu);
 router.get("/:id/menu", getRestaurantMenus);
+
+// Reservations
+router.post("/:id/reservations", createReservation);
 
 export default router;

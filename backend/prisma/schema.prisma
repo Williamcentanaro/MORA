@@ -11,12 +11,21 @@ datasource db {
 model User {
   id                     String         @id @default(uuid())
   email                  String         @unique
-  password               String
+  password               String?
   name                   String?
   role                   Role           @default(USER)
   plan                   String         @default("FREE")
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
+  googleId               String?        @unique
+  facebookId             String?        @unique
+  avatar                 String?
+  surname                String?
+  emailVerified          Boolean        @default(false)
+  verificationToken      String?        @unique
+  verificationTokenExpiry DateTime?
+  resetToken             String?        @unique
+  resetTokenExpiry       DateTime?
   followedRestaurants    Follower[]
   notifications          Notification[]
   pushSubscriptions      PushSubscription[]
@@ -65,6 +74,7 @@ model Restaurant {
   openingHours  OpeningHour[]
   owner         User             @relation(fields: [ownerId], references: [id])
   reviews       Review[]
+  reservations  Reservation[]
 }
 
 model OpeningHour {
@@ -89,6 +99,22 @@ model Menu {
   date         DateTime?
   price        Float?
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  items        MenuItem[]
+}
+
+model MenuItem {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Float?
+  currency    String?  @default("EUR")
+  category    String?
+  tags        String?
+  availability Boolean @default(true)
+  menuId      String
+  menu        Menu     @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Event {
@@ -167,4 +193,21 @@ model Review {
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   @@unique([userId, restaurantId])
+}
+
+model Reservation {
+  id           String   @id @default(uuid())
+  restaurantId String
+  userId       String?
+  name         String
+  email        String
+  phone        String
+  guests       Int
+  date         DateTime
+  time         String   // e.g. "20:30"
+  notes        String?
+  status       String   @default("pending") // pending, confirmed, cancelled
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
 }
