@@ -45,8 +45,8 @@ export const register = async (req: Request, res: Response, next: NextFunction):
             data: {
                 email,
                 password: hashedPassword,
-                name,
-                surname,
+                name: name || null,
+                surname: surname || null,
                 role: 'USER',
                 emailVerified: false,
                 verificationToken,
@@ -382,9 +382,9 @@ export const handleGoogleCallback = async (req: Request, res: Response) => {
             user = await prisma.user.create({
                 data: {
                     email: payload.email,
-                    name: payload.name,
+                    name: payload.name || null,
                     googleId: payload.sub,
-                    avatar: payload.picture,
+                    avatar: payload.picture || null,
                     role: 'USER',
                     emailVerified: true,
                 }
@@ -499,9 +499,9 @@ export const handleFacebookCallback = async (req: Request, res: Response) => {
             user = await prisma.user.create({
                 data: {
                     email: fbData.email,
-                    name: fbData.name,
+                    name: fbData.name || null,
                     facebookId: fbData.id,
-                    avatar: fbData.picture?.data?.url,
+                    avatar: fbData.picture?.data?.url || null,
                     role: 'USER',
                     emailVerified: true,
                 }

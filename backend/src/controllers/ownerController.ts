@@ -131,8 +131,8 @@ export const updateRestaurantInfo = async (req: AuthRequest, res: Response, next
                 coverImage,
                 gallery: gallery || undefined,
                 cuisineType: cuisineType || undefined,
-                latitude: (latVal !== undefined && !isNaN(latVal as number)) ? latVal : undefined,
-                longitude: (lngVal !== undefined && !isNaN(lngVal as number)) ? lngVal : undefined
+                latitude: (latVal !== undefined && !isNaN(latVal as number)) ? latVal : null,
+                longitude: (lngVal !== undefined && !isNaN(lngVal as number)) ? lngVal : null
             }
         });
 
